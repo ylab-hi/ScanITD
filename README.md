@@ -61,7 +61,7 @@ The name of the output VCF file will be __prefix__.itd.vcf
 
 License
 ----------------
-This project is licensed under <a href="http://opensource.org/licenses/NPOSL-3.0">NPOSL-3.0</a>.
+This project is licensed under <a href="https://opensource.org/licenses/MIT">MIT</a>.
 
 Contact
 -----------------
