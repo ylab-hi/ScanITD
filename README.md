@@ -54,7 +54,17 @@ indexed_reference_genome_fasta    :specify reference genome in FASTA format (the
 ```
 #### Output:
 ```	
-reference_genome    :specify the prefix of the output vcf file ( __prefix__.itd.vcf )
+output_vcf_filename_prefix        :specify the prefix of the output vcf file 
 ```
+The name of the output VCF file will be __prefix__.itd.vcf
+
+
+License
+----------------
+This project is licensed under <a href="http://opensource.org/licenses/NPOSL-3.0">NPOSL-3.0</a>.
+
+Contact
+-----------------
+Bug reports or feature requests can be submitted on the <a href="https://github.com/ylab-hi/ScanITD/issues">ScanITD Github page</a>.
 
   
