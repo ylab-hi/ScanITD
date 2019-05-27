@@ -21,3 +21,40 @@ conda install -c bioconda samtools
 ```
 Usage
 -------------------------
+```
+ScanITD.py -i input_bam_file -r indexed_refenence_genome_fasta -o output_vcf_filename_prefix [opts]
+```
+
+### Options:
+```
+  -h, --help            show this help message and exit
+  -i INPUT, --input INPUT
+                        BWA-MEM BAM file
+  -r REF, --ref REF     reference genome in FASTA format
+  -o OUTPUT, --output OUTPUT
+                        output prefix
+  -m MAPQ, --mapq MAPQ  minimal MAPQ in BAM for calling ITD (default: 15)
+  -c AO, --ao AO        minimal observation count for ITD (default: 4)
+  -d DP, --depth DP     minimal depth to call ITD (default: 10)
+  -f VAF, --vaf VAF     minimal variant allele frequency (default: 0.1)
+  -l ITD_LEN, --len ITD_LEN
+                        minimal ITD length to report (default: 10)
+  -n MISMATCH           maximum allowed mismatch bases of pairwise local
+                        alignment (default: 3)
+  -t TARGET, --target TARGET
+                        Limit analysis to targets listed in the BED-format
+                        file or a samtools region string
+  -k, --keep            Kepp the ITD build BAM file
+  -v, --version         show program's version number and exit
+```  
+#### Input:
+```	
+input_bam_file                    :input WES BAM file. (e.g., wes-seq.bam)
+indexed_reference_genome_fasta    :specify reference genome in FASTA format (the reference genome should be indexed)
+```
+#### Output:
+```	
+reference_genome    :specify the prefix of the output vcf file ( __prefix__.itd.vcf )
+```
+
+  
