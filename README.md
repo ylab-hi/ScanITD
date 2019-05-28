@@ -17,8 +17,8 @@ Install [anaconda](https://www.anaconda.com/download/) (python 3.7) firstly, the
 conda install -c bioconda pysam
 conda install -c conda-forge scikit-bio
 conda install -c anaconda numpy
-conda install -c bioconda samtools
-```
+conda install -c bioconda samtools  ## samtools/1.0 or newer is required
+ ```
 Usage
 -------------------------
 ```
