@@ -2,7 +2,7 @@
 #-*- coding: utf-8 -*-
 #===============================================================================
 #===============================================================================
-__version__ = 0.1
+__version__ = 0.3
 
 import sys
 import os
@@ -10,6 +10,7 @@ import time
 import subprocess
 import re
 import argparse
+from pyfaidx import Fasta
 
 try:
     import pysam
@@ -129,8 +130,8 @@ def detect_itd_from_cigar(chr, read, mapq_cutoff):
 
 
 def softclipping_realignment(mapq_cutoff, input, output):
-    bwa_bam = pysam.Samfile(input, 'rb')
-    output_bam = pysam.Samfile(output + '.temp.bam', 'wb', template=bwa_bam)
+    bwa_bam = pysam.AlignmentFile(input, 'rb')
+    output_bam = pysam.AlignmentFile(output + '.temp.bam', 'wb', template=bwa_bam)
     try:
         for read in bwa_bam.fetch(until_eof=True):
             if read.mapq >= mapq_cutoff and not read.is_secondary and not read.has_tag(
@@ -159,6 +160,10 @@ def softclipping_realignment(mapq_cutoff, input, output):
         sys.exit(1)
     bwa_bam.close()
     output_bam.close()
+    pysam.sort('-o', output, '{0}.temp.bam'.format(output))
+    pysam.index(output)
+
+    '''
     try:
         subprocess.check_call(
             "samtools sort {0}.temp.bam -o {0}".format(output),
@@ -168,6 +173,7 @@ def softclipping_realignment(mapq_cutoff, input, output):
         sys.exit(1)
 
     subprocess.check_call("samtools index {}".format(output), shell=True)
+    '''
 
 
 def version_checking(samtools_path):
@@ -237,21 +243,19 @@ def mismatch_count(sr_pos, sr_seq, itd_id, itd_seq,
     else:
         seq_target_from_read = skbio.DNA(itd_seq[0])
         seq_target_start = sr_pos[-1] - itd_len + 1
+        if seq_target_start < 0:
+            seq_target_start = 0
         seq_target_end = sr_pos[-1] + 1
         cov_pos = seq_target_end - 1
 
-    seq_target_from_genome = skbio.DNA(
-        str(ref_file.fetch(
-            reference=sr_pos[1],
-            start=seq_target_start,
-            end=seq_target_end)).upper())
+    genome_seq = Fasta(ref_fa, sequence_always_upper=True, as_raw=True)
+    seq_target_from_genome = skbio.DNA( str(genome_seq[sr_pos[1]][seq_target_start:seq_target_end]) )
+
     ao = 0
-    samfile = pysam.Samfile(bamfile, 'rb')
-    dp_array = samfile.count_coverage(
-        reference=sr_pos[1],
-        start=cov_pos,
-        end=cov_pos + 1)
-    dp = sum([x[0] for x in dp_array])
+
+    dp_line = pysam.depth('{0}'.format(bamfile), '-q', '15', '-r', '{0}:{1}-{1}'.format(sr_pos[1], cov_pos+1)).decode('utf-8')
+    dp = int(dp_line.rstrip().split('\t')[-1])
+
     for each_seq in sr_seq:
         seq_query = skbio.DNA(each_seq)
         try:
@@ -269,7 +273,6 @@ def mismatch_count(sr_pos, sr_seq, itd_id, itd_seq,
             if (start_end_pos1[0][1] == len(seq_query) - 1 and start_end_pos1[1][1] == len(seq_target_from_genome) - 1 and sum(alignment1[0].mismatches(alignment1[1])) <= mismatch_cutoff) or (
                     start_end_pos2[0][1] == len(seq_query) - 1 and start_end_pos2[1][1] == len(seq_target_from_read) - 1 and sum(alignment2[0].mismatches(alignment2[1])) <= mismatch_cutoff):
                 ao += 1
-    samfile.close()
     return ao, dp, seq_target_start
 
 
@@ -305,11 +308,50 @@ def get_softclip_info(read):
     else:
         return 0, '', -1
 
+def mismatch_seq(s1, s2):
+    if len(s1) != len(s2):
+        sys.exit('Error in fetching insertion sequence!')
+    else:
+        count = 0
+        for i,j in zip(s1, s2):
+            if i != j:
+                count +=1
+        return count
+
+def self_loop_checker(insertion_seq, left_seq, right_seq):
+    ins_seq = insertion_seq
+    ins_len = len(insertion_seq)
+    if ins_len % 2 == 0:
+        steps = int(ins_len/2)
+    else:
+        steps = int(ins_len/2) + 1
+    # left rolling
+    count = 1
+    for i in range(steps):
+        ins_seq = ins_seq[-1:] + ins_seq[0:len(ins_seq)-1]
+        combo_seq = left_seq[-count:] + right_seq[:ins_len-count]
+        count += 1
+        if mismatch_seq(ins_seq, combo_seq) <= 5:
+            return True
+    # right rolling
+    ins_seq = insertion_seq
+    count = 1
+    for i in range(steps):
+        ins_seq = ins_seq[1:] + ins_seq[:1]
+        combo_seq = left_seq[-(ins_len-count):] + right_seq[:count]
+        count += 1
+        if mismatch_seq(ins_seq, combo_seq) <= 5:
+            return True
+    # is a insertion of novel sequence
+    return False
 
 def itd_scan(input_bam, output_prefix, ao_cutoff, dp_cutoff, vaf_cutoff,
              itd_len_cutoff, target, mapq_cutoff, mismatch_cutoff, fasta_file):
     itd_set = set()
-    samfile = pysam.Samfile(input_bam, 'rb')
+    samfile = pysam.AlignmentFile(input_bam, 'rb')
+
+    genome_seq = Fasta(fasta_file, sequence_always_upper=True, as_raw=True)
+
     vcffile = open(output_prefix + '.itd.vcf', 'w')
     print(vcf_header(output_prefix), file=vcffile)
     vcf_field_gt = 'GT\t1/1'
@@ -326,7 +368,7 @@ def itd_scan(input_bam, output_prefix, ao_cutoff, dp_cutoff, vaf_cutoff,
             regions = [target]
     for each_region in regions:
         try:
-            for col in samfile.pileup(region=each_region, stepper='all'):
+            for col in samfile.pileup(region=each_region, stepper='all', truncate=True):
                 dp = col.n
                 itd_dict = {}
                 sr_dict = {}
@@ -345,17 +387,27 @@ def itd_scan(input_bam, output_prefix, ao_cutoff, dp_cutoff, vaf_cutoff,
                                     sr_dict[(soft_mode, col.reference_name, soft_pos)] = [
                                         soft_seq]
                         if read.indel >= itd_len_cutoff:
-                            itd_id = 'INS,' + \
-                                str(col.pos + 1) + ',' + str(read.indel) + ',1'
-                            itd_seq_dict[itd_id] = [read.alignment.query_sequence[read.query_position + 1:],
-                                                    read.alignment.query_sequence[:read.query_position + read.indel]]
-                            try:
-                                itd_dict[itd_id][-1] = itd_dict[itd_id][-1] + 1
-                            except KeyError:
-                                ref_seq = read.alignment.query_sequence[read.query_position]
-                                alt_seq = read.alignment.query_sequence[
-                                    read.query_position:read.query_position + read.indel + 1]
-                                itd_dict[itd_id] = [ref_seq, alt_seq, 1]
+                            saving_flag = False
+                            if re.search(r'\d+M\d+I\d+M', str(read.alignment.cigarstring)):
+                                left_seq_from_genome = genome_seq[col.reference_name][(col.pos-read.indel+2):col.pos+1]
+                                right_seq_from_genome = genome_seq[col.reference_name][col.pos+1:(col.pos+read.indel)]
+                                insertion_seq_in_read = read.alignment.query_sequence[read.query_position+1:(read.query_position + read.indel+1)]
+                                if self_loop_checker(insertion_seq_in_read, left_seq_from_genome, right_seq_from_genome):
+                                    saving_flag = True
+                            else:
+                                saving_flag = True
+                            if saving_flag:
+                                itd_id = 'INS,' + \
+                                    str(col.pos + 1) + ',' + str(read.indel) + ',1'
+                                itd_seq_dict[itd_id] = [read.alignment.query_sequence[read.query_position + 1:],
+                                          read.alignment.query_sequence[:read.query_position + read.indel]]
+                                try:
+                                    itd_dict[itd_id][-1] = itd_dict[itd_id][-1] + 1
+                                except KeyError:
+                                    ref_seq = read.alignment.query_sequence[read.query_position]
+                                    alt_seq = read.alignment.query_sequence[
+                                        read.query_position:read.query_position + read.indel + 1]
+                                    itd_dict[itd_id] = [ref_seq, alt_seq, 1]
                         elif is_itd(read, col.pos, mapq_cutoff):
                             itd_id = ','.join(
                                 read.alignment.get_tag('SV').split(',')[:4])
@@ -391,7 +443,7 @@ def itd_scan(input_bam, output_prefix, ao_cutoff, dp_cutoff, vaf_cutoff,
                         reverse=True)
                     ao = sorted_itd[0][1][0]
                     dp = sorted_itd[0][1][1]
-                    vaf = round(float(ao) / dp, 2)
+                    vaf = float(ao)/dp
                     itd_pos = sorted_itd[0][0]
                     if dp >= dp_cutoff and ao >= ao_cutoff and vaf >= vaf_cutoff:
                         itd_type, itd_pos, itd_length, itd_mode = itd_id.split(
@@ -399,8 +451,8 @@ def itd_scan(input_bam, output_prefix, ao_cutoff, dp_cutoff, vaf_cutoff,
                         end = sorted_itd[0][0] + int(itd_length)
                         chr2 = col.reference_name
                         itd_length = itd_length
-                        vcf_field_info = 'NS=1;AO=' + str(ao) + ';DP=' + str(dp) + ';AB=' + str(
-                            vaf) + ';SVLEN=' + itd_length + ';SVTYPE=TDUP;SVMETHOD=ScanITD_ALN;CHR2=' + chr2 + ';END=' + str(end)
+                        vcf_field_info = 'NS=1;AO=' + str(ao) + ';DP=' + str(dp) + ';AB=' + \
+                            '{:.2g}'.format(vaf) + ';SVLEN=' + itd_length + ';SVTYPE=TDUP;SVMETHOD=ScanITD_ALN;CHR2=' + chr2 + ';END=' + str(end)
 
                         out_itd = col.reference_name + '\t' + \
                             str(sorted_itd[0][0] + 1) + \
@@ -467,7 +519,8 @@ def main():
     version_checking(path)
 
     # CIGAR string refinement or add SV tag 
-    itd_build = '{}'.format(os.path.join(os.path.dirname(options.input), '{}.itd_build.bam'.format(os.path.splitext(os.path.basename(options.input))[0])))
+    #itd_build = '{}'.format(os.path.join(os.path.dirname(options.input), '{}.itd_build.bam'.format(os.path.splitext(os.path.basename(options.input))[0])))
+    itd_build = '{}'.format(os.path.join(os.path.dirname(options.output), '{}.itd_build.bam'.format(os.path.splitext(os.path.basename(options.input))[0])))
 
     softclipping_realignment(mapq_cutoff=options.mapq, input=options.input, output=itd_build)
 
