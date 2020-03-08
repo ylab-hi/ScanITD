@@ -20,8 +20,8 @@ Generate rearranged genome in FASTA format
 ```
 python create_indel_genome.py chr20.hg19.fa tandemDuplications.txt chr20.hg19.TDUP.fa
 ```
-chr20.hg19.TDUP.fa is the rearranged genome
-chr20.hg19.fa is the unrranged genome
+__chr20.hg19.TDUP.fa__ is the rearranged genome generated;
+__chr20.hg19.fa__ is the unrranged genome.
 
 Step 4
 ---
@@ -38,3 +38,4 @@ Map reads using BWA-MEM
 ```
 bam_generator.py
 ```
+Pay attention, you need to replace __/path/to/hg19.fa__ in bam_generator.py using a working hg19.fa
