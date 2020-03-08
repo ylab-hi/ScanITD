@@ -12,5 +12,10 @@ conda install -c bioconda fastqc
  Usage
 -------------------------
 ```
-ScanITD.py -i input_bam_file -r indexed_refenence_genome_fasta -o output_vcf_filename_prefix [opts]
+trim_galore -o output_folder --paired --fastqc R1.fastq R2.fastq
+```
+#### Input:
+```	
+R1.fastq, R2.fastq   :input WES paired-end reads in FASTQ format file.
+output_folder        :specify output folder name
 ```
