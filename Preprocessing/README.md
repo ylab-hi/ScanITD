@@ -1,3 +1,8 @@
+Instruction
+----------------
+If you start with raw reads (FASTQ) in application, you need do quality control and quality/adapter trimming for raw reads. 
+Then you can use BWA-MEM or other soft-clipping aware NGS aligners to generate a BAM file feeding into ScanITD.
+
 Prerequisites
 ----------------
 You need Fastqc and Trim Galore to run QC.sh
