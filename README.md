@@ -57,7 +57,7 @@ indexed_reference_genome_fasta    :specify reference genome in FASTA format (the
 output_vcf_filename_prefix        :specify the prefix of the output vcf file 
 ```
 The name of the output VCF file will be __prefix__.itd.vcf
-
+The __Test__ directory contains files and scripts for testing the installation.
 
 License
 ----------------
