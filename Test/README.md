@@ -5,5 +5,5 @@ This directory contains one sample dataset for testing purpose to make sure you 
 ```
 ScanITD.py -i test.bam -r /path/to/hg38.fa -o test 
 ```
-The testing script will generate file named __test.itd.vcf__
+The testing script will generate a VCF file named __test.itd.vcf__
 The VCF file contains one ITD (AB=0.12;SVLEN=102)
