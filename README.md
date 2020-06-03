@@ -58,7 +58,7 @@ output_vcf_filename_prefix        :specify the prefix of the output vcf file
 ```
 The name of the output VCF file will be __prefix__.itd.vcf.
 
-The __Test__(https://github.com/ylab-hi/ScanITD/tree/master/Test "Test directory") directory contains files and scripts for testing the installation.
+The [__Test__](https://github.com/ylab-hi/ScanITD/tree/master/Test "Test directory") directory contains files and scripts for testing the installation.
 
 License
 ----------------
