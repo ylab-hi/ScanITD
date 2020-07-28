@@ -1,4 +1,7 @@
 
+# ScanITD
+[![Build Status](https://travis-ci.org/ylab-hi/ScanITD.svg?branch=master&status=passed)](https://travis-ci.org/ylab-hi/ScanITD)
+
 Introduction
 ------------
 ScanITD: detecting internal tandem duplication with robust variant allele frequency estimation
