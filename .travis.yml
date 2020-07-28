@@ -8,6 +8,3 @@ python:
 script:
     # Check the source code for obvious errors
     - python3 -m flake8 . --count --show-source --statistics --select=E901,E999,F821,F822,F823
-
-    # Test the BabyAI levels
-    - ./run_tests.py
