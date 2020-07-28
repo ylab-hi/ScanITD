@@ -10,6 +10,8 @@ before_install:
   - pip install -U pytest
   - pip install pyfaidx
   - pip install pysam
+  - pip install numpy
+  - pip install scikit-bio
 script:
     # Check the source code for obvious errors
     - python3 ScanITD.py -h
