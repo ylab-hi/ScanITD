@@ -9,6 +9,7 @@ before_install:
   - pip install -U pip
   - pip install -U pytest
   - pip install pyfaidx
+  - pip install pysam
 script:
     # Check the source code for obvious errors
     - python3 ScanITD.py -h
