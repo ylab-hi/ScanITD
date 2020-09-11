@@ -71,4 +71,6 @@ Contact
 -----------------
 Bug reports or feature requests can be submitted on the <a href="https://github.com/ylab-hi/ScanITD/issues">ScanITD Github page</a>.
 
-  
+Citation
+------------------
+Wang TY. and Yang R. [ScanITD: Detecting internal tandem duplication with robust variant allele frequency estimation](https://doi.org/10.1093/gigascience/giaa089 "ScanITD: Detecting internal tandem duplication with robust variant allele frequency estimation").
