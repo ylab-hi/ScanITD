@@ -65,11 +65,11 @@ The [__Test__](https://github.com/ylab-hi/ScanITD/tree/master/Test "Test directo
 
 License
 ----------------
-This project is licensed under <a href="https://opensource.org/licenses/MIT">MIT</a>.
+This project is licensed under [MIT](https://opensource.org/licenses/MIT).
 
 Contact
 -----------------
-Bug reports or feature requests can be submitted on the <a href="https://github.com/ylab-hi/ScanITD/issues">ScanITD Github page</a>.
+Bug reports or feature requests can be submitted on the [ScanITD Github page](https://github.com/ylab-hi/ScanITD/issues).
 
 Citation
 ------------------
