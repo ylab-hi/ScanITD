@@ -253,7 +253,7 @@ def mismatch_count(sr_pos, sr_seq, itd_id, itd_seq,
 
     ao = 0
 
-    dp_line = pysam.depth('{0}'.format(bamfile), '-q', '15', '-r', '{0}:{1}-{1}'.format(sr_pos[1], cov_pos+1)).decode('utf-8')
+    dp_line = pysam.depth('{0}'.format(bamfile), '-q', '15', '-r', '{0}:{1}-{1}'.format(sr_pos[1], cov_pos+1))
     dp = int(dp_line.rstrip().split('\t')[-1])
 
     for each_seq in sr_seq:
@@ -354,7 +354,7 @@ def itd_scan(input_bam, output_prefix, ao_cutoff, dp_cutoff, vaf_cutoff,
 
     vcffile = open(output_prefix + '.itd.vcf', 'w')
     print(vcf_header(output_prefix), file=vcffile)
-    vcf_field_gt = 'GT\t1/1'
+    vcf_field_gt = 'GT\t0/1'
     regions = []
     try:
         ifp = open(target)
