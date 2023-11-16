@@ -1,0 +1,13 @@
+.mypy_cache/
+test.sh
+/.coverage
+/.coverage.*
+/.nox/
+/.python-version
+/.pytype/
+/dist/
+/data/
+/dependency/
+/build/
+/dependency/
+/docs/_build/

@@ -374,7 +374,7 @@ def itd_scan(input_bam, output_prefix, ao_cutoff, dp_cutoff, vaf_cutoff,
                 sr_dict = {}
                 itd_seq_dict = {}
                 for read in col.pileups:
-                    if read.alignment.mapq >= mapq_cutoff:
+                    if read.alignment.mapq >= mapq_cutoff and read.query_position:
                         if 'S' in read.alignment.cigarstring and not read.alignment.has_tag(
                                 'SV'):
                             soft_mode, soft_seq, soft_pos = get_softclip_info(
