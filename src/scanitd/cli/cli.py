@@ -1,9 +1,11 @@
 """Console script for scanitd2."""
 
 import typer
+import sys
 from typing import Optional
 from pathlib import Path
 from loguru import logger
+from enum import Enum
 from scanitd import __version__
 from scanitd.inference import scan_itd
 from scanitd.inference import write_events_to_vcf
@@ -21,6 +23,15 @@ def version_callback(value: bool):
     if value:
         typer.echo(f"ScanITD version: {__version__}")
         raise typer.Exit()
+
+
+# Define the Enum with the specific log levels
+class LogLevel(str, Enum):
+    INFO = "info"
+    WARNING = "warning"
+    ERROR = "error"
+    DEBUG = "debug"
+    TRACE = "trace"
 
 
 app = typer.Typer(
@@ -95,6 +106,9 @@ def main(
         "--target",
         help="Limit analysis to targets listed in the BED-format file or a samtools region string",
     ),
+    log_level: LogLevel = typer.Option(
+        LogLevel.INFO, "-l", "--log-level", help="set the logging level."
+    ),
     version: Optional[bool] = typer.Option(
         None,
         "-v",
@@ -108,6 +122,16 @@ def main(
     Process BAM files to detect internal tandem duplications (ITD).
     Input must be a BWA-MEM aligned BAM file and an indexed reference genome in FASTA format.
     """
+    logger.remove()
+
+    logger.add(
+        sys.stdout,
+        level=log_level.upper(),
+        enqueue=True,
+        colorize=True,
+        backtrace=False,
+        diagnose=True,
+    )
     event_list, bam_header = scan_itd(
         in_bam_path=input_bam,
         mapq_cutoff=mapq,

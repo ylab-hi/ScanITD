@@ -139,11 +139,12 @@ def same_chrom_same_strand_mode21_handler(
                     (lt_bp_seq, rt_bp_seq),
                     (read_lt.strand, read_rt.strand),
                 )
+            # mapping mode and position are not matched here.
             return (
                 "TDUP",
                 (
-                    f"{lt_chrm}:{junc_end}",
                     f"{lt_chrm}:{junc_start}",
+                    f"{lt_chrm}:{junc_end}",
                     1,
                     2,
                 ),
@@ -185,11 +186,12 @@ def same_chrom_same_strand_mode21_handler(
                         (lt_bp_seq, rt_bp_seq),
                         (read_lt.strand, read_rt.strand),
                     )
+                # mapping mode and position are not matched here.
                 return (
                     "TDUP",
                     (
-                        f"{lt_chrm}:{junc_end}",
                         f"{lt_chrm}:{junc_start}",
+                        f"{lt_chrm}:{junc_end}",
                         1,
                         2,
                     ),

@@ -92,8 +92,6 @@ class BamScanner:
         """Iterate the bam file."""
         # supplementary alignment cigarstring extraction
         # key: read.query_name + left S + right S
-        # For minimap2, "-Y" need to be used, use soft clipping for supplementary alignments
-        # "--MD" need to be used, MD tag store information about SNVs and DELs
         self.logger.info("Iter bam file and Extracting primary alignments with SA tags")
 
         for _region in self.regions:
@@ -231,11 +229,14 @@ def scan_itd(
     )
     # iterate over all read of the bam file
     tdup_anchors = bam_scanner.iter_bam()
+    logger.trace(f"{tdup_anchors=}")
 
     bam_object = bam_scanner.in_bam_object
     genome_fasta = bam_scanner.genome_fasta
 
     to_be_rescued_sequences = defaultdict(list)
+
+    query_reads_total_set = set()
 
     tdup_anchors_sequences = {}
     tdup_ao = defaultdict(int)
@@ -295,9 +296,12 @@ def scan_itd(
                                     ]
                                     softclipped_position = read_obj.ref_start
 
-                                to_be_rescued_sequences[
-                                    (chrm_ra, softclipped_position, read_mode)
-                                ].append(softclipped_sequence)
+                                if read_name not in query_reads_total_set:
+                                    to_be_rescued_sequences[
+                                        (chrm_ra, softclipped_position, read_mode)
+                                    ].append(softclipped_sequence)
+                                    query_reads_total_set.add(read_name)
+
                             # deal with TDUP anchors
                             else:
                                 _, tdup_ref_start, tdup_ref_end, _ = tdup_anchors[
@@ -347,7 +351,9 @@ def scan_itd(
                                             right_softclipped_sequence
                                         )
 
-                                tdup_ao[tdup_id] += 1
+                                if read_name not in query_reads_total_set:
+                                    tdup_ao[tdup_id] += 1
+                                    query_reads_total_set.add(read_name)
 
                         ##### I in the CIGAR ####
                         if pileup_read.indel >= itd_length_cutoff:
@@ -429,6 +435,8 @@ def scan_itd(
         new_ao = update_tdup_ao(
             tdup_id, original_ao, tdup_anchors_sequences, to_be_rescued_sequences
         )
+
+        logger.trace(f"{tdup_id=}, {original_ao=}, {new_ao=}")
 
         _chrom, _ref_start, _event_size, _event_seq = tdup_id
         depth = obtain_depth_given_genomic_position(bam_object, _chrom, _ref_start)
