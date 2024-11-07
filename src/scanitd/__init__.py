@@ -1,5 +1,5 @@
-"""Top-level package for ScanITD2."""
+"""Top-level package for ScanITD."""
 
 __author__ = """Ting-You Wang"""
-__email__ = "dolittle007@gmail.com"
 __version__ = "0.1.0"
+__PACKAGE_NAME__ = "ScanITD"

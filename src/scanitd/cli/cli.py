@@ -1,11 +1,10 @@
 """Console script for scanitd2."""
 
-__version__ = "0.1.0"
-
 import typer
 from typing import Optional
 from pathlib import Path
 from loguru import logger
+from scanitd import __version__
 from scanitd.inference import scan_itd
 from scanitd.inference import write_events_to_vcf
 
@@ -109,8 +108,6 @@ def main(
     Process BAM files to detect internal tandem duplications (ITD).
     Input must be a BWA-MEM aligned BAM file and an indexed reference genome in FASTA format.
     """
-    # Your main program logic goes here
-    # You can access all parameters directly by their names
     event_list, bam_header = scan_itd(
         in_bam_path=input_bam,
         mapq_cutoff=mapq,
