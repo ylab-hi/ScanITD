@@ -4,23 +4,24 @@
 """
 
 from .basic import (
-    Event,
     CigarCode,
+    Event,
     Interval,
     Intervals,
     MappingMode,
+    MicroRegion,
     Strand,
 )
-from .basic_read import Read
-from .basic_read import reverse_complement
+from .basic_read import Read, reverse_complement
 
 __all__ = [
     "CigarCode",
+    "Event",
     "Interval",
     "Intervals",
     "MappingMode",
+    "MicroRegion",
     "Read",
-    "Event",
     "Strand",
     "reverse_complement",
 ]

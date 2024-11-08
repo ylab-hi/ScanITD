@@ -1,10 +1,15 @@
 """SR rescuer functions."""
 
 from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from ssw import AlignmentMgr
 
 from scanitd.base import MappingMode
 
+if TYPE_CHECKING:
+    from pyfaidx import Fasta
 
 __all__ = [
     "update_tdup_ao",
@@ -14,51 +19,69 @@ __all__ = [
 def update_tdup_ao(
     tdup_id: tuple[str, int, int, str],
     original_ao: int,
-    tdup_anchors_sequences: dict,
+    genome_fasta: Fasta,
     to_be_rescued_sequences: dict,
     mismatches_cutoff: int = 5,
 ) -> int:
     """Update AO for one TDUP event."""
-    tdup_chrm, tdup_ref_start, tdup_size, tdup_seq = tdup_id
+    tdup_chrm, tdup_ref_start, tdup_size, _tdup_seq, break_point_region = tdup_id
     tdup_ref_end = tdup_ref_start + tdup_size
-
-    left_softclipped_sequence, right_softclipped_sequence = tdup_anchors_sequences[
-        tdup_id
-    ]
 
     align_mgr = AlignmentMgr(
         match_score=2,
         mismatch_penalty=2,
     )
 
-    ref_seq_from_genome = tdup_seq
-
     rescued_ao = 0
-    for rescued_id in to_be_rescued_sequences:
-        chrm_rescued, rescued_softclipped_position, rescued_read_mode = rescued_id
-        if chrm_rescued == tdup_chrm:
-            ref_seq_from_read = ""
-            if (
-                rescued_read_mode == MappingMode.SM
-                and rescued_softclipped_position == tdup_ref_start
-            ):
-                ref_seq_from_read = left_softclipped_sequence
-            elif (
-                rescued_read_mode == MappingMode.MS
-                and rescued_softclipped_position == tdup_ref_end
-            ):
-                ref_seq_from_read = right_softclipped_sequence
+    # SM, tdup_ref_start as breakpoint
 
-            if ref_seq_from_read:
-                for query_seq in to_be_rescued_sequences[rescued_id]:
-                    if alignment_operation(
-                        align_mgr,
-                        query_seq,
-                        ref_seq_from_genome,
-                        rescued_read_mode,
-                        mismatches_cutoff,
-                    ):
-                        rescued_ao += 1
+    rescued_read_mode = MappingMode.SM
+    possible_rescued_id = tdup_chrm, tdup_ref_start, rescued_read_mode
+
+    query_sequences = to_be_rescued_sequences.get(possible_rescued_id)
+    if query_sequences:
+        __ref_seq_from_genome_partial = genome_fasta[tdup_chrm][tdup_ref_start - tdup_size : tdup_ref_end].seq
+        if break_point_region.micro_type == "microinsertion":
+            ref_seq_from_genome = __ref_seq_from_genome_partial + break_point_region.sequence
+        elif break_point_region.micro_type == "microhomology":
+            ref_seq_from_genome = __ref_seq_from_genome_partial[: -break_point_region.length]
+        else:
+            ref_seq_from_genome = __ref_seq_from_genome_partial
+
+        for query_seq in query_sequences:
+            if alignment_operation(
+                align_mgr,
+                query_seq,
+                ref_seq_from_genome,
+                rescued_read_mode,
+                mismatches_cutoff,
+            ):
+                rescued_ao += 1
+
+    # MS, tdup_ref_end as breakpoint
+
+    rescued_read_mode = MappingMode.MS
+    possible_rescued_id = tdup_chrm, tdup_ref_end, rescued_read_mode
+
+    query_sequences = to_be_rescued_sequences.get(possible_rescued_id)
+    if query_sequences:
+        __ref_seq_from_genome_partial = genome_fasta[tdup_chrm][tdup_ref_start : tdup_ref_end + tdup_size].seq
+        if break_point_region.micro_type == "microinsertion":
+            ref_seq_from_genome = break_point_region.sequence + __ref_seq_from_genome_partial
+        elif break_point_region.micro_type == "microhomology":
+            ref_seq_from_genome = __ref_seq_from_genome_partial[break_point_region.length :]
+        else:
+            ref_seq_from_genome = __ref_seq_from_genome_partial
+
+        for query_seq in query_sequences:
+            if alignment_operation(
+                align_mgr,
+                query_seq,
+                ref_seq_from_genome,
+                rescued_read_mode,
+                mismatches_cutoff,
+            ):
+                rescued_ao += 1
 
     return original_ao + rescued_ao
 
@@ -96,11 +119,7 @@ def alignment_operation(
     if variants["mismatches"] > mismatches_cutoff:
         return False
 
-    return (
-        read_mode == MappingMode.SM
-        and reference_end == len(reference_seq) - 1
-        and query_end == len(query_seq) - 1
-    ) or (read_mode == MappingMode.MS and reference_start == 0 and query_start == 0)
+    return (read_mode == MappingMode.SM and reference_end == len(reference_seq) - 1 and query_end == len(query_seq) - 1) or (read_mode == MappingMode.MS and reference_start == 0 and query_start == 0)
 
 
 def calculate_variants(

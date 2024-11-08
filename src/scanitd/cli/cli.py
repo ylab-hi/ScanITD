@@ -1,21 +1,22 @@
-"""Console script for scanitd2."""
+"""Console script for scanitd."""
+
+import sys
+from enum import Enum
+from pathlib import Path
 
 import typer
-import sys
-from typing import Optional
-from pathlib import Path
 from loguru import logger
-from enum import Enum
+
 from scanitd import __version__
-from scanitd.inference import scan_itd
-from scanitd.inference import write_events_to_vcf
+from scanitd.inference import scan_itd, write_events_to_vcf
 
 
 def itd_len_type(value: int) -> int:
     """Validate ITD length (assumed from original code)"""
     value = int(value)
     if value < 0:
-        raise typer.BadParameter("ITD length must be positive")
+        msg = "ITD length must be positive"
+        raise typer.BadParameter(msg)
     return value
 
 
@@ -89,16 +90,20 @@ def main(
     ),
     itd_len: int = typer.Option(
         10,
-        "-l",
         "--length",
         callback=itd_len_type,
         help="minimum ITD length to report",
     ),
-    mismatch: int = typer.Option(
-        3,
+    mismatch_sr: int = typer.Option(
+        1,
         "-n",
-        "--mismatches",
-        help="maximum allowed mismatches of pairwise local alignment",
+        "--aln-mismatches",
+        help="maximum allowed mismatches for pairwise local alignment",
+    ),
+    mismatch_insertion: int = typer.Option(
+        2,
+        "--ins-mismatches",
+        help="maximum allowed mismatches for insertion-inferred duplication",
     ),
     target: str = typer.Option(
         "",
@@ -106,10 +111,8 @@ def main(
         "--target",
         help="Limit analysis to targets listed in the BED-format file or a samtools region string",
     ),
-    log_level: LogLevel = typer.Option(
-        LogLevel.INFO, "-l", "--log-level", help="set the logging level."
-    ),
-    version: Optional[bool] = typer.Option(
+    log_level: LogLevel = typer.Option(LogLevel.INFO, "-l", "--log-level", help="set the logging level."),
+    version: bool | None = typer.Option(
         None,
         "-v",
         "--version",
@@ -119,8 +122,7 @@ def main(
     ),
 ):
     """
-    Process BAM files to detect internal tandem duplications (ITD).
-    Input must be a BWA-MEM aligned BAM file and an indexed reference genome in FASTA format.
+    ScanITD: Detecting internal tandem duplication with robust variant allele frequency estimation
     """
     logger.remove()
 
@@ -138,7 +140,8 @@ def main(
         ref_genome=ref,
         target_file=target,
         itd_length_cutoff=itd_len,
-        mismatches_cutoff=mismatch,
+        allowed_mismatches_for_sr_rescue=mismatch_sr,
+        allowed_mismatches_for_insertion=mismatch_insertion,
         logger=logger,
     )
 

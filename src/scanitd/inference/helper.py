@@ -1,26 +1,31 @@
 """Helper functions."""
 
 from __future__ import annotations
-from typing import Any
+
+import locale
+from typing import TYPE_CHECKING, Any
+
 import numpy as np
-from pysam import AlignmentFile
-from pathlib import Path
-from pyfaidx import Fasta
 
-from scanitd.base import MappingMode
-from scanitd.base import reverse_complement
+from scanitd.base import MappingMode, reverse_complement
 from scanitd.writer import VCFWriter
-from scanitd.mtype import LoggerType
 
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from pyfaidx import Fasta
+    from pysam import AlignmentFile
+
+    from scanitd.mtype import LoggerType
 
 __all__ = [
-    "same_chrom_same_strand_mode21_handler",
-    "same_chrom_same_strand_handler",
     "format_sa_tag",
-    "obtain_sa_query_seq_from_ra",
-    "parse_target_genomic_coordinates",
     "get_insertion_reference_pos",
     "obtain_depth_given_genomic_position",
+    "obtain_sa_query_seq_from_ra",
+    "parse_target_genomic_coordinates",
+    "same_chrom_same_strand_handler",
+    "same_chrom_same_strand_mode21_handler",
     "write_events_to_vcf",
 ]
 
@@ -35,7 +40,6 @@ def same_chrom_same_strand_handler(
     microinsertion_cutoff=20,
 ):
     """Handler for same chrom and same strand."""
-    logger.trace("same_chrom_same_strand_handler takes over the task.")
     if lt_mode == MappingMode.SM and rt_mode == MappingMode.MS:
         return same_chrom_same_strand_mode21_handler(
             read_lt,
@@ -80,28 +84,15 @@ def same_chrom_same_strand_mode21_handler(
         target_end = read_lt.ref_end
         target_offset = target_end - target_start
 
-        bp_region_seq_len = (
-            read_lt.query_length
-            - read_lt.rt_soft_len
-            - read_rt.lt_soft_len
-            - read_lt.read_match_size
-            - read_rt.read_match_size
-        )
+        bp_region_seq_len = read_lt.query_length - read_lt.rt_soft_len - read_rt.lt_soft_len - read_lt.read_match_size - read_rt.read_match_size
 
-        logger.trace(f"{bp_region_seq_len=}")
+        # logger.trace(f"{bp_region_seq_len=}")
 
         if bp_region_seq_len > microinsertion_cutoff:
             logger.trace(f"{bp_region_seq_len=} > {microinsertion_cutoff=}")
             return None
 
-        if bp_region_seq_len > 0:
-            query_offset = read_lt.reference_match_size + read_rt.reference_match_size
-        else:
-            query_offset = (
-                read_lt.reference_match_size
-                + read_rt.reference_match_size
-                + bp_region_seq_len
-            )
+        query_offset = read_lt.reference_match_size + read_rt.reference_match_size if bp_region_seq_len > 0 else read_lt.reference_match_size + read_rt.reference_match_size + bp_region_seq_len
 
         lt_bp_seq = obtain_bp_region_seq(
             read_lt,
@@ -118,7 +109,7 @@ def same_chrom_same_strand_mode21_handler(
 
         evt_size = query_offset - target_offset
 
-        logger.trace(f"{evt_size=}, {query_offset=}")
+        # logger.trace(f"{evt_size=}, {query_offset=}")
         if evt_size <= 0:  # deletion
             pass
         # reads length < tandem duplication size
@@ -224,11 +215,7 @@ def softclipped_length_and_event_size_checker(
     :return: whether event_size > softclipped_length (If it is True, it will be a TDUP event)
     :rtype: bool
     """
-    return (
-        read.lt_soft_len < event_size + bp_region_seq_len
-        if mode == MappingMode.SM
-        else read.rt_soft_len < event_size + bp_region_seq_len
-    )
+    return read.lt_soft_len < event_size + bp_region_seq_len if mode == MappingMode.SM else read.rt_soft_len < event_size + bp_region_seq_len
 
 
 def obtain_bp_region_seq(read, mode, bp_region_seq_len, genome_fasta: Fasta) -> str:
@@ -263,14 +250,10 @@ def obtain_bp_region_seq(read, mode, bp_region_seq_len, genome_fasta: Fasta) -> 
     # microhomology
     elif bp_region_seq_len < 0:
         if mode == MappingMode.SM:  # SM
-            bp_region_seq = genome_fasta[chrom][
-                read.ref_start : read.ref_start - bp_region_seq_len
-            ].seq
+            bp_region_seq = genome_fasta[chrom][read.ref_start : read.ref_start - bp_region_seq_len].seq
 
         elif mode == MappingMode.MS:  # MS
-            bp_region_seq = genome_fasta[chrom][
-                read.ref_end + bp_region_seq_len : read.ref_end
-            ].seq
+            bp_region_seq = genome_fasta[chrom][read.ref_end + bp_region_seq_len : read.ref_end].seq
 
         bp_region_seq = "-" + bp_region_seq
 
@@ -338,24 +321,24 @@ def parse_target_genomic_coordinates(input_data):
                 raise ValueError
             return f"{chrom}:{start}-{end}"
         except ValueError:
-            raise ValueError(f"Invalid coordinates: {chrom}:{start}-{end}")
+            msg = f"Invalid coordinates: {chrom}:{start}-{end}"
+            raise ValueError(msg)
 
     # Check if input might be a file
     if isinstance(input_data, str):
         # Try to open as file first
         try:
-            with open(input_data, "r") as f:
+            with open(input_data, encoding=locale.getpreferredencoding(False)) as f:
                 lines = f.readlines()
             # Process as BED file
             for line in lines:
                 if line.strip() and not line.startswith("#"):
                     fields = line.strip().split("\t")
                     if len(fields) >= 3:
-                        result.append(
-                            validate_coordinates(fields[0], fields[1], fields[2])
-                        )
+                        result.append(validate_coordinates(fields[0], fields[1], fields[2]))
                     else:
-                        raise ValueError(f"Invalid BED format in line: {line}")
+                        msg = f"Invalid BED format in line: {line}"
+                        raise ValueError(msg)
             return result
         except FileNotFoundError:
             # Not a file, continue with string processing
@@ -376,7 +359,8 @@ def parse_target_genomic_coordinates(input_data):
                 start, end = pos.split("-")
                 result.append(validate_coordinates(chrom, start, end))
             except ValueError:
-                raise ValueError(f"Invalid chrom:start-end format: {entry}")
+                msg = f"Invalid chrom:start-end format: {entry}"
+                raise ValueError(msg)
 
         # Check if it's in BED format (tab-separated)
         elif "\t" in entry:
@@ -384,16 +368,16 @@ def parse_target_genomic_coordinates(input_data):
             if len(fields) >= 3:
                 result.append(validate_coordinates(fields[0], fields[1], fields[2]))
             else:
-                raise ValueError(f"Invalid BED format: {entry}")
+                msg = f"Invalid BED format: {entry}"
+                raise ValueError(msg)
         else:
-            raise ValueError(f"Unrecognized format: {entry}")
+            msg = f"Unrecognized format: {entry}"
+            raise ValueError(msg)
 
     return result
 
 
-def self_loop_checker(
-    insertion_seq: str, left_seq: str, right_seq: str, allowed_mismatched: int = 5
-) -> tuple[bool, int, str]:
+def self_loop_checker(insertion_seq: str, left_seq: str, right_seq: str, allowed_mismatched: int = 5) -> tuple[bool, int, str]:
     """Check if the insertion seq is a duplication or not."""
 
     def count_mismatches_vectorized(str1, str2):
@@ -414,13 +398,10 @@ def self_loop_checker(
 
     ins_seq = insertion_seq
     ins_len = len(insertion_seq)
-    if ins_len % 2 == 0:
-        steps = int(ins_len / 2)
-    else:
-        steps = int(ins_len / 2) + 1
+    steps = int(ins_len / 2) if ins_len % 2 == 0 else int(ins_len / 2) + 1
     # left rolling
     count = 1
-    for i in range(steps):
+    for _i in range(steps):
         ins_seq = ins_seq[-1:] + ins_seq[0 : len(ins_seq) - 1]
         combo_seq = left_seq[-count:] + right_seq[: ins_len - count]
         count += 1
@@ -429,7 +410,7 @@ def self_loop_checker(
     # right rolling
     ins_seq = insertion_seq
     count = 1
-    for i in range(steps):
+    for _i in range(steps):
         ins_seq = ins_seq[1:] + ins_seq[:1]
         combo_seq = left_seq[-(ins_len - count) :] + right_seq[:count]
         count += 1
@@ -468,9 +449,7 @@ def get_insertion_reference_pos(cigar_string, read_pos, insertion_size):
     current_pos = read_pos
 
     # Parse the full CIGAR string up to our insertion
-    cigar_ops = re.findall(
-        r"(\d+)([MIDNSHPX=])", cigar_string[: match.start() + len(match.group(1)) + 1]
-    )
+    cigar_ops = re.findall(r"(\d+)([MIDNSHPX=])", cigar_string[: match.start() + len(match.group(1)) + 1])
 
     for length, op in cigar_ops:
         length = int(length)
@@ -494,10 +473,7 @@ def obtain_depth_given_genomic_position(
     SM: position
     """
 
-    if read_mode == MappingMode.MS:
-        _position = position - 1
-    else:
-        _position = position
+    _position = position - 1 if read_mode == MappingMode.MS else position
     return bam_object.count(contig=chrom, start=_position, end=_position + 1)
 
 

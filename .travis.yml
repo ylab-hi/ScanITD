@@ -4,7 +4,6 @@ language: python
 python:
   - 3.11
   - 3.10
-  - 3.9
 
 # Command to install dependencies, e.g. pip install -r requirements.txt --use-mirrors
 install: pip install -U tox-travis
@@ -24,5 +23,5 @@ deploy:
     secure: PLEASE_REPLACE_ME
   on:
     tags: true
-    repo: dolittle007/scanitd2
-    python: 3.8
+    repo: dolittle007/scanitd
+    python: 3.10

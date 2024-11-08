@@ -3,22 +3,68 @@ from __future__ import annotations
 from enum import Enum, IntEnum
 
 
+class MicroRegion:
+    """Store microinsertion or microhomology event."""
+
+    __slots__ = (
+        "length",
+        "micro_type",
+        "sequence",
+    )
+
+    def __init__(
+        self,
+        input_sequence: str,
+    ) -> None:
+        if input_sequence.startswith("+"):
+            self.micro_type = "microinsertion"
+            self.sequence = input_sequence[1:]
+        elif input_sequence.startswith("-"):
+            self.micro_type = "microhomology"
+            self.sequence = input_sequence[1:]
+        else:
+            self.micro_type = "blunt_end"
+            self.sequence = ""
+        self.length = len(self.sequence)
+
+    def __hash__(self) -> int:
+        """Get the hash value of the event.
+        :return: hash value of the event
+        """
+        return hash(self.micro_type) ^ hash(self.sequence) ^ hash(self.length)
+
+    def __eq__(self, other) -> bool:
+        if not isinstance(other, MicroRegion):
+            return False
+
+        # Compare `name` and `age` attributes for equality
+        return self.micro_type == other.micro_type and self.sequence == other.sequence and self.length == other.length
+
+    def __repr__(self) -> str:
+        """Get the representation of the event.
+
+        :return: representation of the event
+        """
+        return f"MicroRegion({self.micro_type=}, {self.sequence=} {self.length=})"
+
+
 class Event:
     """Store TDUP or INS event."""
 
     __slots__ = (
-        "chrom",
-        "ref_start",
-        "event_size",
-        "event_sequence",
-        "event_type",
-        "ao",
         "af",
-        "dp",
-        "chrom2",
-        "end",
-        "ref_allele",
         "alt_allele",
+        "ao",
+        "break_point_region",
+        "chrom",
+        "chrom2",
+        "dp",
+        "end",
+        "event_sequence",
+        "event_size",
+        "event_type",
+        "ref_allele",
+        "ref_start",
     )
 
     def __init__(
@@ -33,6 +79,7 @@ class Event:
         end: int,
         ref_allele: str | None = None,
         alt_allele: str | None = None,
+        break_point_region: MicroRegion | None = None,
     ) -> None:
         self.chrom = chrom
         self.ref_start = ref_start
@@ -46,41 +93,33 @@ class Event:
         self.end = end
         self.ref_allele = ref_allele
         self.alt_allele = alt_allele
+        self.break_point_region = break_point_region
 
     def __hash__(self) -> int:
         """Get the hash value of the event.
 
         :return: hash value of the event
         """
-        return (
-            hash(self.chrom)
-            ^ hash(self.ref_start)
-            ^ hash(self.event_size)
-            ^ hash(self.event_sequence)
-            ^ hash(self.event_type)
-        )
+        return hash(self.chrom) ^ hash(self.ref_start) ^ hash(self.event_size) ^ hash(self.event_sequence) ^ hash(self.event_type)
 
     def __repr__(self) -> str:
         """Get the representation of the event.
 
         :return: representation of the event
         """
-        return (
-            f"Event({self.chrom=}, {self.ref_start=}, {self.event_size=}, {self.event_sequence=}, {self.event_type=} "
-            f"{self.ref_allele=}, {self.alt_allele=})"
-        )
+        return f"Event({self.chrom=}, {self.ref_start=}, {self.event_size=}, {self.event_sequence=}, {self.event_type=} " f"{self.ref_allele=}, {self.alt_allele=})"
 
     @classmethod
     def new(
         cls,
         event_type: str,
-        event_id: tuple[str, int, int, str],
+        event_id: tuple[str, int, int, str, MicroRegion],
         ao: int,
         dp: int,
         ref_allele: str | None = None,
         alt_allele: str | None = None,
     ):
-        chrom, ref_start, event_size, event_sequence = event_id
+        chrom, ref_start, event_size, event_sequence, break_point_region = event_id
 
         if event_type == "TDUP":
             end = ref_start + event_size
@@ -98,6 +137,7 @@ class Event:
             end,
             ref_allele,
             alt_allele,
+            break_point_region,
         )
 
 
@@ -398,10 +438,7 @@ class Intervals:
 
         if isinstance(other, Intervals):
             return Intervals(
-                [
-                    exon + other_exon
-                    for exon, other_exon in zip(self.exon_list, other.exon_list)
-                ],
+                [exon + other_exon for exon, other_exon in zip(self.exon_list, other.exon_list, strict=False)],
             )
 
         message = f"{other} is not int or Intervals"
@@ -413,10 +450,7 @@ class Intervals:
 
         if isinstance(other, Intervals):
             return Intervals(
-                [
-                    exon - other_exon
-                    for exon, other_exon in zip(self.exon_list, other.exon_list)
-                ],
+                [exon - other_exon for exon, other_exon in zip(self.exon_list, other.exon_list, strict=False)],
             )
 
         message = f"{other} is not int or Intervals"
@@ -455,7 +489,7 @@ class Intervals:
             return None
 
         introns = Intervals([])
-        for exon_group in zip(self.exon_list, self.exon_list[1:]):
+        for exon_group in zip(self.exon_list, self.exon_list[1:], strict=False):
             introns.append(Interval(exon_group[0].end, exon_group[1].start))
 
         return introns

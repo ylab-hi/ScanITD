@@ -4,12 +4,16 @@ from __future__ import annotations
 
 import datetime
 from functools import singledispatchmethod
-from typing import IO, Any, ClassVar
+from typing import IO, TYPE_CHECKING, Any, ClassVar
 
 from loguru import logger
-from scanitd.base import Event
+
+from scanitd import __version__
 
 from .writer import Writer
+
+if TYPE_CHECKING:
+    from scanitd.base import Event
 
 
 class VCFWriter(Writer):
@@ -49,8 +53,9 @@ class VCFWriter(Writer):
         "SVLEN": "Integer",
         "CHR2": "String",
         "END": "Integer",
+        "HOMSEQ": "String",
         "INSSEQ": "String",
-        "DUPSEQ": "String",
+        "SEQ": "String",
     }
     reserved_format: ClassVar[dict[str, str]] = {"GT": "String"}
     reserved_alt: ClassVar[list[str]] = [
@@ -68,8 +73,9 @@ class VCFWriter(Writer):
         "END": "END coordinate in case of a translocation",
         "SVMETHOD": "Type of approach used to detect SV",
         "GT": "Genotype",
-        "INSSEQ": "Insertion sequence",
-        "DUPSEQ": "Duplication sequence",
+        "INSSEQ": "Sequence of micro-insertion at event breakpoint",
+        "HOMSEQ": "Sequence of micro-homology at event breakpoint",
+        "SEQ": "Duplication/Insertion sequence",
         "TDUP": "Tandem duplication",
         "INS": "Insertion",
     }
@@ -136,7 +142,7 @@ class VCFWriter(Writer):
     def _(self, data_object: Event, event_id: int) -> None:
         """Write Series to VCF file.
 
-        :param data_object: Series to write to file.
+        :param data_object: Event to write to file.
         """
         if data_object.event_type is None:
             logger.warning(
@@ -145,7 +151,6 @@ class VCFWriter(Writer):
         # _hop_vcf_feature is a dict
         _hop_vcf_feature = get_vcf_features_from_event(
             data_object,
-            event_id,
         )
         hop_vcf_feature = vcf_feature_transformer(_hop_vcf_feature, event_id)
         self.write_line(self.formatter(hop_vcf_feature))
@@ -154,12 +159,9 @@ class VCFWriter(Writer):
     def header(self) -> str:
         """VCF header provides metadata describing the body of the file."""
 
-        date = datetime.datetime.today().strftime("%Y%m%d")
-        source = "ScanITD2"
-        reference = (
-            f"<CMD={obtain_reference_from_bam_header(self.bam_header)},"
-            'Description="Alignment parameters">'
-        )
+        date = datetime.datetime.now().strftime("%Y%m%d")
+        source = f"ScanITDv{__version__}"
+        reference = f"<CMD={obtain_reference_from_bam_header(self.bam_header)}," 'Description="Alignment parameters">'
 
         header_lines = [
             "##fileformat=VCFv4.3",
@@ -172,14 +174,12 @@ class VCFWriter(Writer):
         for _id in VCFWriter.reserved_info:
             _number: str | int = 0 if VCFWriter.reserved_info[_id] == "Flag" else 1
             header_lines.append(
-                f"##INFO=<ID={_id},Number={_number},Type={VCFWriter.reserved_info[_id]},"
-                f'Description="{VCFWriter.description[_id]}">',
+                f"##INFO=<ID={_id},Number={_number},Type={VCFWriter.reserved_info[_id]}," f'Description="{VCFWriter.description[_id]}">',
             )
 
         for _id in VCFWriter.reserved_format:
             header_lines.append(
-                f"##FORMAT=<ID={_id},Number=1,Type={VCFWriter.reserved_format[_id]},"
-                f'Description="{VCFWriter.description[_id]}">',
+                f"##FORMAT=<ID={_id},Number=1,Type={VCFWriter.reserved_format[_id]}," f'Description="{VCFWriter.description[_id]}">',
             )
 
         for _id in VCFWriter.reserved_alt:
@@ -194,10 +194,7 @@ class VCFWriter(Writer):
 
     def get_contigs(self) -> list[str]:
         """Get contigs from BAM file header."""
-        return [
-            f"##contig=<ID={contig_dict['SN']},length={contig_dict['LN']}>"
-            for contig_dict in self.bam_header["SQ"]
-        ]
+        return [f"##contig=<ID={contig_dict['SN']},length={contig_dict['LN']}>" for contig_dict in self.bam_header["SQ"]]
 
 
 def obtain_reference_from_bam_header(bam_header: dict[str, Any]) -> str:
@@ -207,22 +204,13 @@ def obtain_reference_from_bam_header(bam_header: dict[str, Any]) -> str:
         "ContextMap2",
         "CRAC",
         "GSNAP",
-        "HISAT",
-        "HISAT2",
-        "MapSplice2",
         "Novoalign",
         "OLego",
         "RUM",
-        "SOAPsplice",
-        "STAR",
         "Subread",
-        "TopHat",
-        "TopHap2",
         "bwa",
         "bowtie",
         "bowtie2",
-        "NGMLR",
-        "minimap2",
     }
     avail_aligners = {x.upper() for x in aligners}
     for item in bam_header.get("PG", {}):
@@ -233,7 +221,6 @@ def obtain_reference_from_bam_header(bam_header: dict[str, Any]) -> str:
 
 def get_vcf_features_from_event(
     event: Event,
-    event_id: int,
 ):
     """Obtain hop vcf features from one series."""
 
@@ -248,9 +235,11 @@ def get_vcf_features_from_event(
     ref_allele = event.ref_allele
     alt_allele = event.alt_allele
     sv_distance = event.event_size
+    break_point_region = event.break_point_region
 
-    dup_seq = event_sequence if sv_type == "TDUP" else ""
-    ins_seq = event_sequence if sv_type == "INS" else ""
+    evt_seq = event_sequence if sv_type in {"TDUP", "INS"} else "."
+    micro_insertion = break_point_region.sequence if break_point_region.micro_type == "microinsertion" else "."
+    micro_homology = break_point_region.sequence if break_point_region.micro_type == "microhomology" else "."
 
     return {
         "CHROM": chrom,
@@ -265,8 +254,9 @@ def get_vcf_features_from_event(
         "AF": f"{af:.3g}",
         "SVLEN": f"{sv_distance}",
         "SVMETHOD": "ScanITD2",
-        "DUPSEQ": dup_seq if dup_seq else ".",
-        "INSSEQ": ins_seq if ins_seq else ".",
+        "SEQ": evt_seq,
+        "INSSEQ": micro_insertion,
+        "HOMSEQ": micro_homology,
     }
 
 
@@ -276,8 +266,8 @@ def vcf_feature_transformer(feature_dict: dict[str, str], event_id: int) -> list
         f'SVTYPE={feature_dict["SVTYPE"]};AO={feature_dict["AO"]};'
         f'CHR2={feature_dict["CHR2"]};END={feature_dict["END"]};'
         f'DP={feature_dict["DP"]};AF={feature_dict["AF"]};SVLEN={feature_dict["SVLEN"]};'
-        f'DUPSEQ={feature_dict["DUPSEQ"]};INSSEQ={feature_dict["INSSEQ"]};'
-        f'SVMETHOD={feature_dict["SVMETHOD"]}'
+        f'INSSEQ={feature_dict["INSSEQ"]};HOMSEQ={feature_dict["HOMSEQ"]};'
+        f'SEQ={feature_dict["SEQ"]};SVMETHOD={feature_dict["SVMETHOD"]}'
     )
 
     return [
