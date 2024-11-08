@@ -12,8 +12,7 @@ from scanitd import __version__
 
 from .writer import Writer
 
-if TYPE_CHECKING:
-    from scanitd.base import Event
+from scanitd.base import Event
 
 
 class VCFWriter(Writer):
