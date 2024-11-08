@@ -45,6 +45,7 @@ class VCFWriter(Writer):
 
     reserved_info: ClassVar[dict[str, str]] = {
         "DP": "Integer",
+        "OAO": "Integer",
         "AO": "Integer",
         "AF": "Float",
         "SVMETHOD": "String",
@@ -64,7 +65,8 @@ class VCFWriter(Writer):
 
     description: ClassVar[dict[str, str]] = {
         "DP": "Total read depth at the locus",
-        "AO": "Alternate allele observations, with partial observations recorded fractionally",
+        "OAO": "Original alternate allele observations",
+        "AO": "Alternate allele observations",
         "AF": "Estimated allele frequency in the range (0,1], representing the ratio of reads showing the alternative allele to all reads",
         "SVTYPE": "The type of event, TDUP, INS.",
         "SVLEN": "Difference in length between REF and ALT alleles",
@@ -226,6 +228,7 @@ def get_vcf_features_from_event(
     sv_type = event.event_type
     chrom = event.chrom
     ref_start = event.ref_start
+    oao = event.oao
     ao = event.ao
     dp = event.dp
     af = event.af
@@ -248,6 +251,7 @@ def get_vcf_features_from_event(
         "SVTYPE": sv_type,
         "CHR2": chrom,
         "END": f"{end + 1}",
+        "OAO": f"{oao}",
         "AO": f"{ao}",
         "DP": f"{dp}",
         "AF": f"{af:.3g}",
@@ -262,7 +266,7 @@ def get_vcf_features_from_event(
 def vcf_feature_transformer(feature_dict: dict[str, str], event_id: int) -> list[str]:
     """VCF feature transformer."""
     info_field = (
-        f'SVTYPE={feature_dict["SVTYPE"]};AO={feature_dict["AO"]};'
+        f'SVTYPE={feature_dict["SVTYPE"]};OAO={feature_dict["OAO"]};AO={feature_dict["AO"]};'
         f'CHR2={feature_dict["CHR2"]};END={feature_dict["END"]};'
         f'DP={feature_dict["DP"]};AF={feature_dict["AF"]};SVLEN={feature_dict["SVLEN"]};'
         f'INSSEQ={feature_dict["INSSEQ"]};HOMSEQ={feature_dict["HOMSEQ"]};'

@@ -383,14 +383,14 @@ def scan_itd(
         _chrom, _ref_start, _event_size, _event_seq, break_point_region = tdup_id
         depth = obtain_depth_given_genomic_position(bam_object, _chrom, _ref_start)
         ref_allele, alt_allele = tdup_allele_dict[tdup_id]
-        event_list.append(Event.new("TDUP", tdup_id, new_ao, depth, ref_allele, alt_allele))
+        event_list.append(Event.new("TDUP", tdup_id, original_ao, new_ao, depth, ref_allele, alt_allele))
 
     for ins_id in ins_ao:
         _chrom, _ref_start, _event_size, _event_seq, break_point_region = ins_id
         ao = ins_ao[tdup_id]
         depth = obtain_depth_given_genomic_position(bam_object, _chrom, _ref_start)
         ref_allele, alt_allele = ins_allele_dict[ins_id]
-        event_list.append(Event.new("INS", ins_id, ao, depth, ref_allele, alt_allele))
+        event_list.append(Event.new("INS", ins_id, ao, ao, depth, ref_allele, alt_allele))
 
     # Sort by chrom, then by reference position
     sorted_event_list = sorted(event_list, key=lambda event: (event.chrom, event.ref_start))

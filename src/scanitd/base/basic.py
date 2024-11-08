@@ -54,6 +54,7 @@ class Event:
     __slots__ = (
         "af",
         "alt_allele",
+        "oao",
         "ao",
         "break_point_region",
         "chrom",
@@ -74,6 +75,7 @@ class Event:
         event_size: int,
         event_sequence: str,
         event_type: str,
+        oao: int,
         ao: int,
         dp: int,
         end: int,
@@ -86,6 +88,7 @@ class Event:
         self.event_size = event_size
         self.event_sequence = event_sequence
         self.event_type = event_type
+        self.oao = oao
         self.ao = ao
         self.dp = dp
         self.af = round(float(ao / dp), 4)
@@ -114,6 +117,7 @@ class Event:
         cls,
         event_type: str,
         event_id: tuple[str, int, int, str, MicroRegion],
+        oao: int,
         ao: int,
         dp: int,
         ref_allele: str | None = None,
@@ -132,6 +136,7 @@ class Event:
             event_size,
             event_sequence,
             event_type,
+            oao,
             ao,
             dp,
             end,
