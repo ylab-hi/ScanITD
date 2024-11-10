@@ -23,6 +23,7 @@ lib64/
 parts/
 sdist/
 var/
+poetry.lock
 wheels/
 *.egg-info/
 .installed.cfg
