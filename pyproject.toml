@@ -11,7 +11,7 @@ homepage = "https://github.com/ylab-hi/ScanITD"
 repository = "https://github.com/ylab-hi/ScanITD"
 documentation = "https://scanitd.readthedocs.io"
 classifiers = [
-    "Development Status :: 1 - Beta",
+    "Development Status :: 4 - Beta",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
