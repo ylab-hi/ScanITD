@@ -10,12 +10,6 @@
 pip install scanitd
 ```
 
-- **CONDA** via [Bioconda](https://bioconda.github.io/)
-
-```bash
-conda install scanitd
-```
-
 # Usage
 
  Usage: scanitd [OPTIONS]
@@ -73,12 +67,6 @@ conda install scanitd
 * `--version`, `-v`
     - Show version and exit
 
-## Credits
+# Citation
 
-- [mit license]: https://opensource.org/licenses/mit
-- [pypi]: https://pypi.org/
-- [hypermodern python cookiecutter]: https://github.com/cjolowicz/cookiecutter-hypermodern-python
-- [file an issue]: https://github.com/ylab-hi/ScanITD2/issues
-- [pip]: https://pip.pypa.io/
-- [contributor guide]: CONTRIBUTING.md
-- [command-line reference]: https://scanitd.readthedocs.io/en/latest/usage.html
+Wang TY. and Yang R. [ScanITD: Detecting internal tandem duplication with robust variant allele frequency estimation](https://doi.org/10.1093/gigascience/giaa089 "ScanITD: Detecting internal tandem duplication with robust variant allele frequency estimation").
