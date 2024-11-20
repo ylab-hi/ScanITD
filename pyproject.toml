@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "scanitd"
-version = "0.9.0"
+version = "0.9.1"
 description = "ScanITD"
 authors = [
     "Ting-You Wang <tywang@northwestern.edu>",
@@ -12,10 +12,11 @@ repository = "https://github.com/ylab-hi/ScanITD"
 documentation = "https://scanitd.readthedocs.io"
 classifiers = [
     "Development Status :: 4 - Beta",
-    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3 :: Only"
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
 ]
 
 [tool.poetry.urls]

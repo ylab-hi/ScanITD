@@ -4,13 +4,34 @@
 [![PyPI - Wheel](https://img.shields.io/pypi/wheel/scanitd)](https://pypi.org/project/scanitd/#files)
 [![license](https://img.shields.io/pypi/l/scanitd.svg)](https://github.com/ylab-hi/ScanITD/blob/main/LICENSE)
 
-- **PyPI**
 
-```bash
-pip install scanitd
-```
+# 📦 Installation
 
-# Usage
+ScanITD can be installed using pip, the Python package installer.
+Follow these steps to install:
+
+1. Ensure you have Python 3.10 or later installed on your system.
+
+2. Create a virtual environment (recommended):
+
+   ```bash
+   python -m venv scanitd_env
+   source scanitd_env/bin/activate  # On Windows use `scanitd_env\Scripts\activate`
+   ```
+
+3. Install ScanITD:
+
+   ```bash
+   pip install scanitd
+   ```
+
+4. Verify the installation:
+
+   ```bash
+   scanitd --help
+   ```
+
+# 🛠️ Usage
 
  Usage: scanitd [OPTIONS]
 
@@ -67,6 +88,6 @@ pip install scanitd
 * `--version`, `-v`
     - Show version and exit
 
-# Citation
+# 📚 Citation
 
 Wang TY. and Yang R. [ScanITD: Detecting internal tandem duplication with robust variant allele frequency estimation](https://doi.org/10.1093/gigascience/giaa089 "ScanITD: Detecting internal tandem duplication with robust variant allele frequency estimation").
