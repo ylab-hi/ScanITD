@@ -387,7 +387,7 @@ def scan_itd(
 
     for ins_id in ins_ao:
         _chrom, _ref_start, _event_size, _event_seq, break_point_region = ins_id
-        ao = ins_ao[tdup_id]
+        ao = ins_ao[ins_id]
         depth = obtain_depth_given_genomic_position(bam_object, _chrom, _ref_start)
         ref_allele, alt_allele = ins_allele_dict[ins_id]
         event_list.append(Event.new("INS", ins_id, ao, ao, depth, ref_allele, alt_allele))
