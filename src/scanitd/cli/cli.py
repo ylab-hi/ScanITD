@@ -145,7 +145,7 @@ def main(
         logger=logger,
     )
 
-    write_events_to_vcf(output, bam_header, event_list, logger)
+    write_events_to_vcf(output, bam_header, event_list, logger, min_ao=ao, min_depth=dp, min_vaf=vaf)
 
 
 if __name__ == "__main__":

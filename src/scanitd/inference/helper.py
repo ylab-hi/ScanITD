@@ -482,13 +482,41 @@ def write_events_to_vcf(
     bam_header: Any,
     events: list,
     logger: LoggerType,
+    min_ao: int = 0,
+    min_depth: int = 0,
+    min_vaf: float = 0.0,
 ) -> None:
-    """Parse splice graph for cliques."""
+    """Parse splice graph for cliques and write filtered events to VCF.
+
+    Args:
+        output_vcf: Path to output VCF file
+        bam_header: BAM file header
+        events: List of Event objects
+        logger: Logger instance
+        min_ao: Minimum alternate allele observation count (default: 0)
+        min_depth: Minimum read depth (default: 0)
+        min_vaf: Minimum variant allele frequency (default: 0.0)
+    """
+    # Filter events based on thresholds
+    filtered_events = [
+        event for event in events
+        if event.ao >= min_ao and event.dp >= min_depth and event.af >= min_vaf
+    ]
+
+    # Log filtering statistics
+    total_events = len(events)
+    filtered_count = len(filtered_events)
+    removed_count = total_events - filtered_count
+
+    logger.info(f"Total events detected: {total_events}")
+    logger.info(f"Events passing filters (AO>={min_ao}, DP>={min_depth}, VAF>={min_vaf}): {filtered_count}")
+    if removed_count > 0:
+        logger.info(f"Events filtered out: {removed_count}")
 
     vcf_writer = VCFWriter(
         f"{output_vcf}",
         bam_header,
     )
     with vcf_writer.open():
-        for idx, event in enumerate(events, 1):
+        for idx, event in enumerate(filtered_events, 1):
             vcf_writer.write_data(event, f"{idx}")
