@@ -34,11 +34,11 @@ def version_callback(value: bool):
 class LogLevel(str, Enum):
     """Valid loguru log level names for the ``--log-level`` CLI option."""
 
-    INFO = "info"
-    WARNING = "warning"
-    ERROR = "error"
-    DEBUG = "debug"
-    TRACE = "trace"
+    INFO = "INFO"
+    WARNING = "WARNING"
+    ERROR = "ERROR"
+    DEBUG = "DEBUG"
+    TRACE = "TRACE"
 
 
 app = typer.Typer(
@@ -48,7 +48,9 @@ app = typer.Typer(
 )
 
 
-@app.command()
+@app.command(
+    help="Detect internal tandem duplications (ITDs) with robust variant allele frequency estimation."
+)
 def main(
     input_bam: Path = typer.Option(
         ...,

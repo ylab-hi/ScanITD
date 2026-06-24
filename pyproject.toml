@@ -27,6 +27,15 @@ dependencies = [
     "rich>=13.7.0",
 ]
 
+[project.optional-dependencies]
+docs = [
+    "sphinx>=7.2.6",
+    "myst-parser==3.0.0",
+    "sphinx-rtd-theme>=2.0.0",
+    "sphinx-click>=6.0.0",
+    "sphinx-autobuild>=2021.3.14",
+]
+
 [project.urls]
 Homepage = "https://github.com/ylab-hi/ScanITD"
 Repository = "https://github.com/ylab-hi/ScanITD"
