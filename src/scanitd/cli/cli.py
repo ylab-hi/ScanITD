@@ -12,15 +12,19 @@ from scanitd.inference import scan_itd, write_events_to_vcf
 
 
 def itd_len_type(value: int) -> int:
-    """Validate ITD length (assumed from original code)"""
-    value = int(value)
-    if value < 0:
+    """Validate that ITD length is non-negative."""
+    if int(value) < 0:
         msg = "ITD length must be positive"
         raise typer.BadParameter(msg)
-    return value
+    return int(value)
 
 
 def version_callback(value: bool):
+    """Print the ScanITD version string and exit.
+
+    Args:
+        value: When True (triggered by ``--version`` flag), prints version and exits.
+    """
     if value:
         typer.echo(f"ScanITD version: {__version__}")
         raise typer.Exit()
@@ -28,6 +32,8 @@ def version_callback(value: bool):
 
 # Define the Enum with the specific log levels
 class LogLevel(str, Enum):
+    """Valid loguru log level names for the ``--log-level`` CLI option."""
+
     INFO = "info"
     WARNING = "warning"
     ERROR = "error"
@@ -121,8 +127,22 @@ def main(
         help="Show version and exit",
     ),
 ):
-    """
-    ScanITD: Detecting internal tandem duplication with robust variant allele frequency estimation
+    """ScanITD: Detecting internal tandem duplication with robust variant allele frequency estimation.
+
+    Args:
+        input_bam: Path to the aligned BAM file (must be indexed).
+        ref: Path to the reference FASTA file (must have .fai index).
+        output: Output VCF file path (stem used as sample name).
+        mapq: Minimum MAPQ score for a read to be included (default: 15).
+        ao: Minimum alternate allele observation count to report an event (default: 4).
+        dp: Minimum read depth at the locus to report an event (default: 10).
+        vaf: Minimum variant allele frequency to report an event (default: 0.1).
+        itd_len: Minimum ITD length in base pairs to report (default: 10).
+        mismatch_sr: Maximum mismatches for soft-read rescue alignment (default: 1).
+        mismatch_insertion: Maximum mismatches for insertion-inferred duplication (default: 2).
+        target: BED file path or samtools region string to restrict analysis.
+        log_level: Logging verbosity level (default: INFO).
+        version: When provided, prints version and exits.
     """
     logger.remove()
 

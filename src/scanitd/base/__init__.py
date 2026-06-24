@@ -1,6 +1,9 @@
-"""Init file for scanitd2.
+"""Core data structures and utilities for ScanITD.
 
-@Filename:    __init__.py
+Exports genomic interval types (:class:`Interval`, :class:`Intervals`),
+alignment read representation (:class:`Read`), CIGAR code enums (:class:`CigarCode`),
+strand/mode enums (:class:`Strand`, :class:`MappingMode`), and structural variant
+event containers (:class:`Event`, :class:`MicroRegion`).
 """
 
 from .basic import (

@@ -1,4 +1,4 @@
-"""Module for writing data to a file."""
+"""VCF output writer package for ScanITD."""
 
 from .writer import Writer
 from .vcf_writer import VCFWriter

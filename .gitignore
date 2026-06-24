@@ -23,7 +23,7 @@ lib64/
 parts/
 sdist/
 var/
-poetry.lock
+uv.lock
 wheels/
 *.egg-info/
 .installed.cfg
@@ -50,7 +50,7 @@ coverage.xml
 *.cover
 .hypothesis/
 .pytest_cache/
-poetry.lock
+
 
 # Translations
 *.mo

@@ -1,32 +1,68 @@
-"""Type of the scanitd2."""
+"""Protocol type definitions for ScanITD.
+
+Defines :class:`LoggerType`, a structural subtype compatible with loguru logger
+instances, enabling type-safe logger injection throughout the codebase.
+"""
 
 from typing import Protocol
 from typing import Any
 
 
 class LoggerType(Protocol):
-    """Logger type."""
+    """Structural Protocol for loguru-compatible logger objects.
+
+    Any object implementing these methods can be used as a logger in ScanITD.
+    This is satisfied at runtime by a configured loguru logger.
+    """
 
     def trace(self, msg: str) -> None:
-        """Trace."""
+        """Log a TRACE-level message.
+
+        Args:
+            msg: The message to log.
+        """
 
     def debug(self, msg: str) -> None:
-        """Debug."""
+        """Log a DEBUG-level message.
+
+        Args:
+            msg: The message to log.
+        """
 
     def info(self, msg: str) -> None:
-        """Info."""
+        """Log an INFO-level message.
+
+        Args:
+            msg: The message to log.
+        """
 
     def warning(self, msg: str) -> None:
-        """Warning."""
+        """Log a WARNING-level message.
+
+        Args:
+            msg: The message to log.
+        """
 
     def error(self, msg: str) -> None:
-        """Error."""
+        """Log an ERROR-level message.
+
+        Args:
+            msg: The message to log.
+        """
 
     def critical(self, msr: str) -> None:
-        """Critical."""
+        """Log a CRITICAL-level message.
+
+        Args:
+            msr: The message to log.
+        """
 
     def success(self, msg: str) -> None:
-        """Success."""
+        """Log a SUCCESS-level message.
+
+        Args:
+            msg: The message to log.
+        """
 
     def complete(self) -> Any:
-        """Complete."""
+        """Complete or flush the logger, returning any completion value."""

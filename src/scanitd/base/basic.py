@@ -1,3 +1,9 @@
+"""Fundamental data types and enumerations for ScanITD.
+
+Provides genomic interval arithmetic, structural variant event containers,
+alignment mode enums, CIGAR operation codes, and strand representation.
+"""
+
 from __future__ import annotations
 
 from enum import Enum, IntEnum
@@ -16,6 +22,13 @@ class MicroRegion:
         self,
         input_sequence: str,
     ) -> None:
+        """Initialize a MicroRegion from a prefixed sequence string.
+
+        Args:
+            input_sequence: Breakpoint region sequence with a prefix indicating type:
+                ``+<seq>`` for microinsertion, ``-<seq>`` for microhomology,
+                or empty string / plain sequence for blunt-end.
+        """
         if input_sequence.startswith("+"):
             self.micro_type = "microinsertion"
             self.sequence = input_sequence[1:]
@@ -34,6 +47,7 @@ class MicroRegion:
         return hash(self.micro_type) ^ hash(self.sequence) ^ hash(self.length)
 
     def __eq__(self, other) -> bool:
+        """Return True if both MicroRegion objects share the same type, sequence and length."""
         if not isinstance(other, MicroRegion):
             return False
 
@@ -83,6 +97,23 @@ class Event:
         alt_allele: str | None = None,
         break_point_region: MicroRegion | None = None,
     ) -> None:
+        """Initialize an Event.
+
+        Args:
+            chrom: Chromosome name (e.g. ``chr1``).
+            ref_start: 0-based start position on the reference.
+            event_size: Size of the structural variant in base pairs.
+            event_sequence: Sequence of the event (inserted or duplicated bases).
+            event_type: Event class; one of ``TDUP`` or ``INS``.
+            oao: Original (pre-rescue) alternate allele observation count.
+            ao: Rescued alternate allele observation count.
+            dp: Total read depth at the locus.
+            end: 0-based end position on the reference.
+            ref_allele: Reference base at the locus, or ``None``.
+            alt_allele: Alternate allele sequence, or ``None``.
+            break_point_region: Micro-homology / micro-insertion at the breakpoint,
+                or ``None`` for blunt-end junctions.
+        """
         self.chrom = chrom
         self.ref_start = ref_start
         self.event_size = event_size
@@ -123,12 +154,33 @@ class Event:
         ref_allele: str | None = None,
         alt_allele: str | None = None,
     ):
+        """Construct an Event from a structured event ID tuple.
+
+        Args:
+            event_type: Either ``TDUP`` or ``INS``.
+            event_id: A 5-tuple of (chrom, ref_start, event_size, event_sequence,
+                break_point_region).
+            oao: Original (pre-rescue) alternate allele observation count.
+            ao: Rescued alternate allele observation count.
+            dp: Total read depth at the locus.
+            ref_allele: Reference base at the locus.
+            alt_allele: Alternate allele sequence.
+
+        Returns:
+            A new Event instance.
+
+        Raises:
+            ValueError: If event_type is not ``TDUP`` or ``INS``.
+        """
         chrom, ref_start, event_size, event_sequence, break_point_region = event_id
 
         if event_type == "TDUP":
             end = ref_start + event_size
         elif event_type == "INS":
             end = ref_start
+        else:
+            msg = f"Unknown event_type: {event_type!r}"
+            raise ValueError(msg)
 
         return cls(
             chrom,
@@ -147,21 +199,47 @@ class Event:
 
 
 class MappingMode(IntEnum):
-    """Mode code."""
+    """Chimeric-read alignment mode relative to the soft-clipped end.
+
+    - MS (1): Match then Softclip — the matched segment precedes the softclip.
+    - SM (2): Softclip then Match — the softclip precedes the matched segment.
+    """
 
     Type0 = 0
     MS = 1  # 1 MS
     SM = 2  # 2 SM
 
     # fmt: off
-    def reversed(self): return self.SM if self == self.MS else self.MS
-    def is_sm(self): return self == self.SM
-    def is_ms(self): return self == self.MS
-    def to_str(self): return "SM" if self == self.SM else "MS"
+    def reversed(self):
+        """Return the opposite mapping mode (MS <-> SM)."""
+        return self.SM if self == self.MS else self.MS
+
+    def is_sm(self):
+        """Return True if this mode is SM (Softclip-Match)."""
+        return self == self.SM
+
+    def is_ms(self):
+        """Return True if this mode is MS (Match-Softclip)."""
+        return self == self.MS
+
+    def to_str(self):
+        """Return the string representation (``SM`` or ``MS``)."""
+        return "SM" if self == self.SM else "MS"
     # fmt: on
 
     @classmethod
     def from_int(cls, mode: int | MappingMode):
+        """Construct a MappingMode from an integer code.
+
+        Args:
+            mode: 0 for Type0, 1 for MS, 2 for SM, or an existing MappingMode.
+
+        Returns:
+            Corresponding MappingMode member.
+
+        Raises:
+            ValueError: If mode is not 0, 1, or 2.
+        """
         if isinstance(mode, cls):
             return mode
 
@@ -177,10 +255,13 @@ class MappingMode(IntEnum):
 
 
 class AnnotationCode(IntEnum):
+    """Integer codes used to annotate chimeric-read breakpoint types."""
+
     Type1 = 1
     Type2 = 2
 
     def reversed(self):
+        """Return the other AnnotationCode (Type1 <-> Type2)."""
         return self.Type2 if self == self.Type1 else self.Type1
 
 
@@ -191,9 +272,17 @@ class Strand(Enum):
     Reverse = "-"
 
     # fmt: off
-    def is_reverse(self): return self == Strand.Reverse
-    def is_forward(self): return self == Strand.Forward
-    def reversed(self) -> Strand: return Strand.Reverse if self.is_forward() else Strand.Forward
+    def is_reverse(self):
+        """Return True if this strand is the reverse strand."""
+        return self == Strand.Reverse
+
+    def is_forward(self):
+        """Return True if this strand is the forward strand."""
+        return self == Strand.Forward
+
+    def reversed(self) -> Strand:
+        """Return the opposite strand."""
+        return Strand.Reverse if self.is_forward() else Strand.Forward
     # fmt: on
 
     def __str__(self) -> str:
@@ -203,6 +292,17 @@ class Strand(Enum):
 
     @classmethod
     def from_str(cls, strand: str | Strand):
+        """Construct a Strand from a string or pass through an existing Strand.
+
+        Args:
+            strand: ``+`` for forward, ``-`` for reverse, or an existing Strand.
+
+        Returns:
+            Corresponding Strand member.
+
+        Raises:
+            ValueError: If strand string is not ``+`` or ``-``.
+        """
         if isinstance(strand, cls):
             return strand
         if strand == "+":
@@ -227,7 +327,7 @@ class Strand(Enum):
 
 
 class CigarCode(IntEnum):
-    """Cigar Code."""
+    """Integer enum mapping CIGAR operation characters to their SAM/BAM encoding codes as defined in the SAM specification."""
 
     Match = 0
     Insertion = 1
@@ -263,6 +363,7 @@ class Interval:
         self.end = end
 
     def __eq__(self, other: Interval):
+        """Return True if both intervals share the same start and end positions."""
         if isinstance(other, Interval):
             return self.start == other.start and self.end == other.end
         return False
@@ -272,9 +373,11 @@ class Interval:
         return self.start <= item.start and item.end <= self.end
 
     def __hash__(self) -> int:
+        """Return hash based on start and end."""
         return hash(self.start) ^ hash(self.end)
 
     def __add__(self, other: Interval | int) -> Interval:
+        """Return a new Interval shifted by an integer offset or element-wise sum with another Interval."""
         if isinstance(other, int):
             return Interval(self.start + other, self.end + other)
 
@@ -285,6 +388,7 @@ class Interval:
         raise TypeError(msg)
 
     def __sub__(self, other: Interval | int) -> Interval:
+        """Return a new Interval shifted by an integer offset or element-wise difference with another Interval."""
         if isinstance(other, int):
             return Interval(self.start - other, self.end - other)
 
@@ -295,13 +399,14 @@ class Interval:
         raise TypeError(msg)
 
     def __setitem__(self, index: int, value: int):
+        """Set start (index 0) or end (index 1)."""
         if index == 0:
             self.start = value
         elif index == 1:
             self.end = value
-
-        msg = f"index: {index} is out"
-        raise IndexError(msg)
+        else:
+            msg = f"index: {index} is out"
+            raise IndexError(msg)
 
     def __getitem__(self, index: int):
         """Get item from interval."""
@@ -317,12 +422,14 @@ class Interval:
         raise IndexError(msg)
 
     def __len__(self):
+        """Return the length of the interval (end - start)."""
         return self.end - self.start
 
     def __repr__(self) -> str:
         return f"[{self.start}, {self.end})"
 
     def __iter__(self):
+        """Iterate over (start, end)."""
         return iter((self.start, self.end))
 
     __str__ = __repr__
@@ -333,7 +440,17 @@ class Interval:
         return cls(*item)
 
     def join(self, other: Interval) -> tuple[Interval, Interval] | None:
-        """Set operation overlap and union."""
+        """Compute the intersection and union of two overlapping intervals.
+
+        Args:
+            other: Another Interval to join with.
+
+        Returns:
+            A tuple of (overlap, union) Intervals, or None if the intervals do not overlap.
+
+        Raises:
+            ValueError: If other is not an Interval.
+        """
         if isinstance(other, Interval):
             if self.start <= other.start < self.end:
                 if other.end < self.end:
@@ -373,6 +490,19 @@ class Interval:
         raise ValueError(msg)
 
     def contain(self, other: Interval, *, same_left=False, same_right=False) -> bool:
+        """Check whether this interval contains another, with optional boundary matching.
+
+        Args:
+            other: The Interval to test for containment.
+            same_left: If True, left boundaries must match exactly.
+            same_right: If True, right boundaries must match exactly.
+
+        Returns:
+            True if other is contained within self under the specified boundary conditions.
+
+        Raises:
+            ValueError: If other is not an Interval.
+        """
         if isinstance(other, Interval):
             if not same_left and not same_right:
                 return other in self
@@ -388,33 +518,10 @@ class Interval:
 
 
 class Intervals:
-    """Exons is used to represent exons of a gene.
-    :param exon_list: list of exons
+    """A sequence of Interval objects representing non-overlapping genomic regions (e.g. exons).
 
-    Example:
-
-    >>> exons = Exons(exon_list=[Interval(0, 10), Interval(20, 30)])
-    >>> exons
-    Exons([0, 10), [20, 30))
-    >>> exons[0]
-    [0, 10)
-    >>> exons[1]
-    [20, 30)
-    >>> exons[0] in exons
-    True
-    >>> exons[1] in exons
-    True
-    >>> Interval(0, 5) in exons
-    False
-    >>> Interval(0, 10) in exons
-    True
-    >>> Interval(0, 11) in exons
-    False
-    >>> len(exons)
-    20
-
-    .. seealso::
-        :class:`Interval`
+    Args:
+        exon_list: Ordered list of Interval objects.
     """
 
     def __init__(self, exon_list: list[Interval]) -> None:
@@ -429,15 +536,27 @@ class Intervals:
     def __iter__(self): return iter(self.exon_list)
     def __repr__(self) -> str: return f"Exons({self.exon_list})"
     def __str__(self) -> str: return "[" + ",".join([f"{interval.start}-{interval.end}" for interval in self.exon_list]) + "]"
-    def reverse(self) -> None: self.exon_list[::-1]
-    def reversed(self) -> Intervals: return Intervals(self.exon_list[::-1])
+    def reverse(self) -> None:
+        """Reverse the order of intervals in-place."""
+        self.exon_list.reverse()
+
+    def reversed(self) -> Intervals:
+        """Return a new Intervals with the order reversed."""
+        return Intervals(self.exon_list[::-1])
+
     @property
-    def first(self) -> Interval: return self.exon_list[0]
+    def first(self) -> Interval:
+        """Return the first interval."""
+        return self.exon_list[0]
+
     @property
-    def last(self) -> Interval: return self.exon_list[-1]
+    def last(self) -> Interval:
+        """Return the last interval."""
+        return self.exon_list[-1]
     # fmt: on
 
     def __add__(self, other: int | Intervals) -> Intervals:
+        """Shift all intervals by an integer offset, or add element-wise with another Intervals."""
         if isinstance(other, int):
             return Intervals([exon + other for exon in self.exon_list])
 
@@ -450,6 +569,7 @@ class Intervals:
         raise TypeError(message)
 
     def __sub__(self, other: int | Intervals) -> Intervals:
+        """Shift all intervals by an integer offset, or subtract element-wise with another Intervals."""
         if isinstance(other, int):
             return Intervals([exon - other for exon in self.exon_list])
 
@@ -462,6 +582,7 @@ class Intervals:
         raise TypeError(message)
 
     def __eq__(self, other: Intervals) -> bool:
+        """Return True if all constituent intervals are equal."""
         if isinstance(other, Intervals):
             return self.exon_list == other.exon_list
         return False
@@ -490,6 +611,12 @@ class Intervals:
         return cls(exon_list=[Interval.from_list(exon) for exon in item])
 
     def introns(self) -> Intervals | None:
+        """Compute the intron intervals between consecutive exons.
+
+        Returns:
+            An Intervals containing the gaps between exons, or None if fewer than
+            2 exons exist.
+        """
         if len(self) < Interval._index:
             return None
 

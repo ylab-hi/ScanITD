@@ -1,18 +1,43 @@
-.. ScanITD documentation master file, created by
-   sphinx-quickstart on Fri Nov  8 12:34:31 2024.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
+Welcome to ScanITD's Documentation
+=====================================
 
-Welcome to ScanITD's documentation!
-===================================
+**ScanITD** is a Python tool for detecting **internal tandem duplications (ITDs)**
+from BAM files with robust variant allele frequency estimation.
+
+.. image:: https://img.shields.io/pypi/v/scanitd.svg
+   :target: https://pypi.python.org/pypi/scanitd
+   :alt: PyPI version
+
+.. image:: https://img.shields.io/pypi/l/scanitd.svg
+   :target: https://github.com/ylab-hi/ScanITD/blob/main/LICENSE
+   :alt: License
 
 .. toctree::
    :maxdepth: 2
-   :caption: Contents:
+   :caption: User Guide
 
+   guide/installation
+   guide/quickstart
+   guide/usage
+   guide/output
 
+.. toctree::
+   :maxdepth: 3
+   :caption: API Reference
 
-Indices and tables
+   api/cli
+   api/inference
+   api/base
+   api/writer
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Development
+
+   contributing
+   changelog
+
+Indices and Tables
 ==================
 
 * :ref:`genindex`

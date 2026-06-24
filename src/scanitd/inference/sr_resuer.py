@@ -1,4 +1,8 @@
-"""SR rescuer functions."""
+"""Split-read rescue functions for augmenting tandem duplication allele observations.
+
+Uses Smith-Waterman local alignment (ssw-py) to rescue soft-clipped reads
+that support a TDUP event but lack an SA tag, improving allele frequency estimates.
+"""
 
 from __future__ import annotations
 
@@ -23,7 +27,25 @@ def update_tdup_ao(
     to_be_rescued_sequences: dict,
     mismatches_cutoff: int = 5,
 ) -> int:
-    """Update AO for one TDUP event."""
+    """Update the allele observation count for one TDUP event by rescuing soft-clipped reads.
+
+    For both SM and MS breakpoint positions, collects softclipped sequences that
+    could not be anchored to a TDUP via an SA tag, aligns them against the
+    expected duplicated reference sequence, and counts those passing the mismatch
+    threshold as additional supporting reads.
+
+    Args:
+        tdup_id: 5-tuple of (chrom, ref_start, tdup_size, tdup_seq, MicroRegion)
+            uniquely identifying the TDUP event.
+        original_ao: Original SA-tag-derived allele observation count.
+        genome_fasta: Reference genome Fasta object for sequence extraction.
+        to_be_rescued_sequences: Dict mapping (chrom, position, MappingMode) to
+            lists of softclipped sequences to attempt rescue on.
+        mismatches_cutoff: Maximum mismatches allowed in a rescue alignment (default: 5).
+
+    Returns:
+        int: Updated allele observation count (original_ao + rescued_ao).
+    """
     tdup_chrm, tdup_ref_start, tdup_size, _tdup_seq, break_point_region = tdup_id
     tdup_ref_end = tdup_ref_start + tdup_size
 
@@ -93,6 +115,22 @@ def alignment_operation(
     read_mode: MappingMode,
     mismatches_cutoff: int = 5,
 ):
+    """Perform Smith-Waterman alignment and check whether the read supports a TDUP breakpoint.
+
+    Aligns query_seq against reference_seq using the provided AlignmentMgr, counts
+    mismatches/indels, and verifies that the alignment spans the expected end of the
+    sequence (end-anchored for SM mode, start-anchored for MS mode).
+
+    Args:
+        align_mgr: Configured ssw.AlignmentMgr instance.
+        query_seq: Softclipped read sequence to align.
+        reference_seq: Reference sequence spanning the expected duplicated region.
+        read_mode: MappingMode indicating which end of the alignment must be anchored.
+        mismatches_cutoff: Maximum allowed mismatches (SNVs + indels) (default: 5).
+
+    Returns:
+        bool: True if the alignment passes the mismatch filter and is end-anchored correctly.
+    """
     align_mgr.set_read(query_seq)
     align_mgr.set_reference(reference_seq)
 

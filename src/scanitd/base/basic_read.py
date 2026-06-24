@@ -1,9 +1,11 @@
-"""Basic Read Class."""
+"""BAM alignment read representation and sequence utilities for ScanITD."""
 
 from __future__ import annotations
 
 from .basic import MappingMode, Strand
 from .cigar import parse_cigar
+
+__all__ = ["Read", "reverse_complement"]
 
 
 class Read:
@@ -11,8 +13,8 @@ class Read:
 
     :param chrom: chromosome of genome
     :param ref_start: start position of chimeric read
-    :param strand: direction of chimeric read (-|+)
-    :param cigarstring: cigar string of chimeric read (-|+)
+    :param strand: direction of chimeric read (- or +)
+    :param cigarstring: cigar string of chimeric read (- or +)
     :param mapq: MAPQ of chimeric read
     :param nm: number of mismatches of chimeric read
     :param query_sequence: read sequence in the BAM file
@@ -179,6 +181,13 @@ class Read:
 
 
 def reverse_complement(seq: str) -> str:
-    """Obtain reverse complement sequence."""
-    rctrans = str.maketrans("ACGT", "TGCA")
-    return str.translate(seq, rctrans)[::-1]
+    """Obtain reverse complement sequence.
+
+    Handles both uppercase and lowercase bases; IUPAC ambiguity codes are
+    complemented where possible (N→N, R↔Y, S↔S, W↔W, K↔M, B↔V, D↔H).
+    Unrecognised characters are passed through unchanged.
+    """
+    iupac = "ACGTacgtNnRrYySsWwKkMmBbVvDdHh"
+    comp  = "TGCAtgcaNnYyRrSsWwMmKkVvBbHhDd"
+    rctrans = str.maketrans(iupac, comp)
+    return seq.translate(rctrans)[::-1]

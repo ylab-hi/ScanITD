@@ -39,7 +39,25 @@ def same_chrom_same_strand_handler(
     logger,
     microinsertion_cutoff=20,
 ):
-    """Handler for same chrom and same strand."""
+    """Route chimeric read pairs to the correct SM/MS handler.
+
+    Given two chimeric reads from the same chromosome and strand, determines which
+    read is the SM (Softclip-Match) and which is the MS (Match-Softclip) alignment
+    and dispatches to :func:`same_chrom_same_strand_mode21_handler`.
+
+    Args:
+        read_lt: Left-side chimeric read object.
+        read_rt: Right-side chimeric read object.
+        lt_mode: MappingMode of read_lt.
+        rt_mode: MappingMode of read_rt.
+        genome_fasta: Reference genome Fasta object.
+        logger: Logger instance.
+        microinsertion_cutoff: Maximum allowed microinsertion length at breakpoint.
+
+    Returns:
+        A result tuple from :func:`same_chrom_same_strand_mode21_handler`, or None
+        if the mode combination is not supported.
+    """
     if lt_mode == MappingMode.SM and rt_mode == MappingMode.MS:
         return same_chrom_same_strand_mode21_handler(
             read_lt,
@@ -76,7 +94,28 @@ def same_chrom_same_strand_mode21_handler(
     *,
     is_reverse=False,
 ):
-    """Same chrom same strand mode 21 handler."""
+    """Compute TDUP event coordinates from a SM+MS chimeric read pair.
+
+    For a pair of chimeric reads where one alignment ends in a soft-clip (SM)
+    and the other begins with a soft-clip (MS), calculates the inferred event
+    size as ``query_offset - target_offset`` and extracts breakpoint region
+    sequence.
+
+    Args:
+        read_lt: The SM-mode chimeric read (left boundary).
+        read_rt: The MS-mode chimeric read (right boundary).
+        lt_mode: MappingMode of read_lt (expected SM).
+        rt_mode: MappingMode of read_rt (expected MS).
+        genome_fasta: Reference genome Fasta object.
+        logger: Logger instance.
+        microinsertion_cutoff: Maximum microinsertion length at breakpoint.
+        is_reverse: If True, the read order was swapped before dispatch; adjusts
+            returned position ordering accordingly.
+
+    Returns:
+        A 6-tuple (event_type, positions, read1_coords, read2_coords,
+        bp_sequences, strands) describing the detected TDUP, or None.
+    """
     lt_chrm = read_lt.chrom
 
     if lt_mode == MappingMode.SM and rt_mode == MappingMode.MS:
@@ -286,8 +325,8 @@ def obtain_sa_query_seq_from_ra(
     """Helper function to define query_seq for the supplementary alignment.
 
     :param query_seq_ra: query sequence of representative alignment
-    :param strand_ra: direction of representative read (-|+)
-    :param strand_sa: direction of supplementary read (-|+)
+    :param strand_ra: direction of representative read (- or +)
+    :param strand_sa: direction of supplementary read (- or +)
     :return: query sequence of supplementary alignment
     """
     return query_seq_ra if strand_ra == strand_sa else reverse_complement(query_seq_ra)
@@ -370,15 +409,31 @@ def parse_target_genomic_coordinates(input_data):
             else:
                 msg = f"Invalid BED format: {entry}"
                 raise ValueError(msg)
+        # Plain chromosome name (e.g. "chr1") — pass through as-is for samtools
         else:
-            msg = f"Unrecognized format: {entry}"
-            raise ValueError(msg)
+            result.append(entry)
 
     return result
 
 
 def self_loop_checker(insertion_seq: str, left_seq: str, right_seq: str, allowed_mismatched: int = 5) -> tuple[bool, int, str]:
-    """Check if the insertion seq is a duplication or not."""
+    """Determine whether an inserted sequence is a tandem duplication via rolling comparison.
+
+    Rolls the insertion sequence left and right, comparing against the flanking
+    reference sequence (left_seq + right_seq) with a mismatch tolerance.
+
+    Args:
+        insertion_seq: The sequence of the insertion observed in the read.
+        left_seq: Reference sequence immediately left of the insertion site.
+        right_seq: Reference sequence immediately right of the insertion site.
+        allowed_mismatched: Maximum number of mismatches to tolerate (default: 5).
+
+    Returns:
+        tuple: (is_dup, left_shift, tdup_seq) where:
+            - is_dup (bool): True if the insertion matches a tandem duplication pattern.
+            - left_shift (int): Number of bases the TDUP start is shifted left.
+            - tdup_seq (str): The matching reference sequence that represents the duplication.
+    """
 
     def count_mismatches_vectorized(str1, str2):
         # Convert strings to numpy arrays of characters
@@ -404,9 +459,9 @@ def self_loop_checker(insertion_seq: str, left_seq: str, right_seq: str, allowed
     for _i in range(steps):
         ins_seq = ins_seq[-1:] + ins_seq[0 : len(ins_seq) - 1]
         combo_seq = left_seq[-count:] + right_seq[: ins_len - count]
-        count += 1
         if count_mismatches_vectorized(ins_seq, combo_seq) <= allowed_mismatched:
             return True, count, combo_seq
+        count += 1
     # right rolling
     ins_seq = insertion_seq
     count = 1
@@ -442,7 +497,7 @@ def get_insertion_reference_pos(cigar_string, read_pos, insertion_size):
         return None
 
     # Get the number of matches before the insertion
-    int(match.group(1))
+    matches_before = int(match.group(1))
 
     # Calculate position in the reference where insertion occurs
     # Start from read_pos and add all operations before the insertion
@@ -467,10 +522,18 @@ def obtain_depth_given_genomic_position(
     position: int,
     read_mode: MappingMode = MappingMode.SM,
 ) -> int:
-    """Obtain the read depth at genomic position.
+    """Count reads at a genomic position, adjusting for alignment mode.
 
-    MS: position - 1
-    SM: position
+    Args:
+        bam_object: Open pysam AlignmentFile.
+        chrom: Chromosome name.
+        position: 0-based reference position of the TDUP breakpoint.
+        read_mode: MappingMode determining position offset:
+            - MappingMode.MS: position - 1 is used (breakpoint is at end of match).
+            - MappingMode.SM: position is used as-is (breakpoint is at start of match).
+
+    Returns:
+        int: Number of reads overlapping the queried position.
     """
 
     _position = position - 1 if read_mode == MappingMode.MS else position

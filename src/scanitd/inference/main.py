@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+"""Main BAM scanning and ITD calling pipeline for ScanITD."""
 
 import re
 from collections import defaultdict
@@ -22,7 +23,20 @@ from .sr_resuer import update_tdup_ao
 
 
 class BamScanner:
-    """BcamScanner scan the bam file and output the result to a file."""
+    """BAM file scanner that identifies tandem duplication (TDUP) anchor loci.
+
+    Scans a coordinate-sorted BAM file, extracts chimeric reads carrying SA tags,
+    determines SM/MS alignment modes, and builds a dictionary of candidate TDUP
+    anchor positions keyed by query name.
+
+    Args:
+        input_bam: Path to the input BAM file (must be coordinate-sorted and indexed).
+        mapq_cutoff: Minimum mapping quality for a read to be considered.
+        ref_genome: Path to the reference FASTA file (must have a .fai index).
+        microinsertion_cutoff: Maximum allowed microinsertion length at a breakpoint.
+        regions: List of samtools region strings; None entries mean whole-genome.
+        logger: Logger instance implementing LoggerType.
+    """
 
     def __init__(
         self,
@@ -33,7 +47,16 @@ class BamScanner:
         regions,
         logger,
     ) -> None:
-        """Initialize the class."""
+        """Initialize the BamScanner.
+
+        Args:
+            input_bam: Path to the input BAM file (must be coordinate-sorted and indexed).
+            mapq_cutoff: Minimum mapping quality for a read to be considered.
+            ref_genome: Path to the reference FASTA file (must have a .fai index).
+            microinsertion_cutoff: Maximum allowed microinsertion length at a breakpoint.
+            regions: List of samtools region strings; None entries mean whole-genome.
+            logger: Logger instance implementing LoggerType.
+        """
         self.in_bam_path = input_bam
         self.in_bam_object = pysam.AlignmentFile(input_bam, "rb")
 
@@ -55,9 +78,9 @@ class BamScanner:
         """Check if the bam file is sorted."""
         try:
             return header["HD"]["SO"] == "coordinate"
-        except KeyError:
+        except KeyError as e:
             msg = f"Bam file {self.in_bam_object} is not sorted"
-            raise RuntimeError(msg) from KeyError
+            raise RuntimeError(msg) from e
 
     def _get_genome_fasta(self, ref_genome) -> Fasta:
         """Get the genome fasta file."""
@@ -86,7 +109,15 @@ class BamScanner:
         return header
 
     def iter_bam(self):
-        """Iterate the bam file."""
+        """Iterate over BAM reads and collect TDUP anchor information from SA-tagged reads.
+
+        For each primary alignment carrying a single SA tag on the same chromosome and
+        strand, determines the SM/MS mode of both alignments and invokes the
+        appropriate handler to extract the TDUP coordinates.
+
+        Returns:
+            dict: Mapping of query_name -> (chrom, tdup_ref_start, tdup_ref_end, strand, MicroRegion).
+        """
         # supplementary alignment cigarstring extraction
         # key: read.query_name + left S + right S
         self.logger.info("Iter bam file and Extracting primary alignments with SA tags")
@@ -207,7 +238,32 @@ def scan_itd(
     logger,
     microinsertion_cutoff: int = 10,
 ):
-    """Main function to run scanbam."""
+    """Run the full ScanITD detection pipeline on a BAM file.
+
+    Scans the BAM file for chimeric reads (SA-tagged), identifies TDUP anchor
+    positions, then performs a pileup pass to count supporting reads, rescue
+    soft-clipped reads, and collect large insertions. Outputs sorted Event objects.
+
+    Args:
+        in_bam_path: Path to the input BAM file.
+        mapq_cutoff: Minimum MAPQ score for read inclusion.
+        ref_genome: Path to the reference FASTA file.
+        target_file: BED file path or samtools region string to restrict analysis;
+            empty string means whole genome.
+        itd_length_cutoff: Minimum ITD length to report (in base pairs).
+        allowed_mismatches_for_sr_rescue: Max mismatches allowed when rescuing
+            soft-clipped reads via Smith-Waterman alignment.
+        allowed_mismatches_for_insertion: Max mismatches allowed when classifying
+            a large insertion as a TDUP via self-loop checking.
+        logger: Logger instance implementing LoggerType.
+        microinsertion_cutoff: Maximum microinsertion length at a breakpoint
+            (default: 10).
+
+    Returns:
+        tuple: A 2-tuple of (sorted_event_list, bam_header) where sorted_event_list
+            is a list of :class:`~scanitd.base.Event` objects sorted by (chrom, ref_start)
+            and bam_header is the raw BAM header dict.
+    """
     regions = parse_target_genomic_coordinates(target_file)
 
     if len(regions) == 0:
@@ -363,10 +419,13 @@ def scan_itd(
                                     ref_allele = genome_fasta[chrm_ra][pileup_column.reference_pos : pileup_column.reference_pos + 1].seq
                                     alt_allele = seq_ra[position_of_pileup_site : position_of_pileup_site + insertion_size]
                                     ins_allele_dict[ins_id] = (ref_allele, alt_allele)
-                                    ins_ao[ins_id] += 1
+                                    if read_name not in query_reads_total_set:
+                                        ins_ao[ins_id] += 1
+                                        query_reads_total_set.add(read_name)
 
         except ValueError as e:
-            logger.warning(f"{pileup_column=}, {e=}")
+            _col = pileup_column if "pileup_column" in dir() else "<not yet assigned>"
+            logger.warning(f"pileup_column={_col}, {e=}")
             continue
     for tdup_id in tdup_ao:
         original_ao = tdup_ao[tdup_id]
@@ -381,14 +440,16 @@ def scan_itd(
         logger.trace(f"{tdup_id=}, {original_ao=}, {new_ao=}")
 
         _chrom, _ref_start, _event_size, _event_seq, break_point_region = tdup_id
-        depth = obtain_depth_given_genomic_position(bam_object, _chrom, _ref_start)
+        # TDUP breakpoint is always the ITD start (SM-side) — use SM mode
+        depth = obtain_depth_given_genomic_position(bam_object, _chrom, _ref_start, MappingMode.SM)
         ref_allele, alt_allele = tdup_allele_dict[tdup_id]
         event_list.append(Event.new("TDUP", tdup_id, original_ao, new_ao, depth, ref_allele, alt_allele))
 
     for ins_id in ins_ao:
         _chrom, _ref_start, _event_size, _event_seq, break_point_region = ins_id
         ao = ins_ao[ins_id]
-        depth = obtain_depth_given_genomic_position(bam_object, _chrom, _ref_start)
+        # INS reference_pos is the pileup column position — use SM mode (no offset)
+        depth = obtain_depth_given_genomic_position(bam_object, _chrom, _ref_start, MappingMode.SM)
         ref_allele, alt_allele = ins_allele_dict[ins_id]
         event_list.append(Event.new("INS", ins_id, ao, ao, depth, ref_allele, alt_allele))
 

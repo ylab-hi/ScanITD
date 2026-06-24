@@ -86,7 +86,12 @@ class VCFWriter(Writer):
         file_path: str,
         bam_header: dict[str, Any],
     ) -> None:
-        """Initialize VCFWriter object."""
+        """Initialize VCFWriter object.
+
+        Args:
+            file_path: Path to the output VCF file (stem used as sample name).
+            bam_header: BAM header dict used to populate VCF contig lines and reference info.
+        """
         super().__init__(file_path)
         self.bam_header = bam_header
         self.sample_name: str = self.file_path.stem
@@ -98,7 +103,15 @@ class VCFWriter(Writer):
         return self.io is not None and not self.io.closed
 
     def formatter(self, fields: list[str], delimiter: str = "\t") -> str:
-        """Formatter for writing data."""
+        """Formatter for writing data.
+
+        Args:
+            fields: List of exactly 10 VCF column strings.
+            delimiter: Column separator (default tab).
+
+        Returns:
+            Tab-joined VCF record string with a trailing newline.
+        """
         if fields is None or len(fields) != VCFWriter.num_fields:
             logger.warning(
                 f"{self.__class__.__name__}: Number of fields is not equal to 10.",
@@ -106,7 +119,14 @@ class VCFWriter(Writer):
         return delimiter.join(fields) + "\n"
 
     def open(self, mode: str = "w") -> IO:
-        """Open file."""
+        """Open file.
+
+        Args:
+            mode: File open mode (default ``w``).
+
+        Returns:
+            The opened IO object (also writes VCF header automatically).
+        """
         if self.is_opened:
             logger.warning(f"{self.__class__.__name__}: File is already opened.")
         self.io = self.file_path.open(mode)  # add asyncio support
@@ -133,15 +153,16 @@ class VCFWriter(Writer):
         self.write_line(self.header)
 
     @singledispatchmethod
-    def write_data(self, data_object: Event, object_id: int) -> None:  # type: ignore
+    def write_data(self, data_object, object_id) -> None:  # type: ignore
         """Write data to file.
 
         :param: data_object: Data to write to file.
         """
+        raise NotImplementedError(f"No write_data handler for type {type(data_object)!r}")
 
-    @write_data.register
-    def _(self, data_object: Event, event_id: int) -> None:
-        """Write Series to VCF file.
+    @write_data.register(Event)
+    def _(self, data_object: Event, event_id: str | int) -> None:
+        """Write an Event to the VCF file.
 
         :param data_object: Event to write to file.
         """
@@ -194,12 +215,23 @@ class VCFWriter(Writer):
         return "\n".join(header_lines) + "\n"
 
     def get_contigs(self) -> list[str]:
-        """Get contigs from BAM file header."""
+        """Get contigs from BAM file header.
+
+        Returns:
+            List of ``##contig=<ID=...,length=...>`` header line strings.
+        """
         return [f"##contig=<ID={contig_dict['SN']},length={contig_dict['LN']}>" for contig_dict in self.bam_header["SQ"]]
 
 
 def obtain_reference_from_bam_header(bam_header: dict[str, Any]) -> str:
-    """Obtain reference info from BAM header."""
+    """Obtain reference info from BAM header.
+
+    Args:
+        bam_header: BAM header dict (as returned by pysam ``header.as_dict()``).
+
+    Returns:
+        The aligner command-line string from the PG record, or ``Unknown`` if not found.
+    """
     aligners = {
         "CLC",
         "ContextMap2",
@@ -223,7 +255,16 @@ def obtain_reference_from_bam_header(bam_header: dict[str, Any]) -> str:
 def get_vcf_features_from_event(
     event: Event,
 ):
-    """Obtain hop vcf features from one series."""
+    """Extract VCF field values from an Event object.
+
+    Args:
+        event: A :class:`~scanitd.base.Event` representing a TDUP or INS call.
+
+    Returns:
+        dict: Mapping of VCF field names to string values, including CHROM, POS,
+            REF, ALT, SVTYPE, CHR2, END, OAO, AO, DP, AF, SVLEN, SVMETHOD,
+            SEQ, INSSEQ, and HOMSEQ.
+    """
 
     sv_type = event.event_type
     chrom = event.chrom
@@ -264,7 +305,16 @@ def get_vcf_features_from_event(
 
 
 def vcf_feature_transformer(feature_dict: dict[str, str], event_id: int) -> list[str]:
-    """VCF feature transformer."""
+    """Convert a VCF feature dict into an ordered list of VCF column values.
+
+    Args:
+        feature_dict: Dict produced by :func:`get_vcf_features_from_event`.
+        event_id: Integer or string event identifier used in the ID column.
+
+    Returns:
+        list: 10-element list of strings representing one VCF data row in column order:
+            [CHROM, POS, ID, REF, ALT, QUAL, FILTER, INFO, FORMAT, SAMPLE].
+    """
     info_field = (
         f'SVTYPE={feature_dict["SVTYPE"]};OAO={feature_dict["OAO"]};AO={feature_dict["AO"]};'
         f'CHR2={feature_dict["CHR2"]};END={feature_dict["END"]};'
