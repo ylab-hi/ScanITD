@@ -3,6 +3,7 @@
 [![PyPI version](https://img.shields.io/pypi/v/scanitd.svg)](https://pypi.python.org/pypi/scanitd)
 [![PyPI - Wheel](https://img.shields.io/pypi/wheel/scanitd)](https://pypi.org/project/scanitd/#files)
 [![license](https://img.shields.io/pypi/l/scanitd.svg)](https://github.com/ylab-hi/ScanITD/blob/main/LICENSE)
+[![Documentation Status](https://readthedocs.org/projects/scanitd/badge/?version=latest)](https://scanitd.readthedocs.io)
 
 
 # 📦 Installation
