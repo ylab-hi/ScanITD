@@ -7,7 +7,28 @@ and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.
 
 ---
 
-## [0.9.1] — unreleased
+## [0.9.2] — 2026-07-16
+
+### Fixed
+- Filtering options were not applied (#11)
+- Potential error in `inference/main.py` (#10)
+- Various bug fixes across the `base`, `inference`, and `writer` modules
+
+### Changed
+- Releases now publish to PyPI via GitHub Actions using
+  [PyPI trusted publishing](https://docs.pypi.org/trusted-publishers/) (OIDC),
+  replacing manual `twine upload`
+- Removed `poetry.lock` in favor of a single `pyproject.toml`/`uv.lock`-based
+  dependency setup
+- Updated Python version requirements and dependencies
+- Bumped dev dependencies: `pip` (19.2.3 → 26.1), `wheel` (0.33.6 → 0.38.1)
+
+### Added
+- Comprehensive test suite
+
+---
+
+## [0.9.1] — 2024-11-20
 
 ### Added
 - Full Google-style docstrings across all modules (`base`, `inference`, `writer`, `cli`)
