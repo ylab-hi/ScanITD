@@ -116,4 +116,5 @@ ENV/
 # Tool configurations
 .omc/
 .serena/
+BIOCONDA.md
 
