@@ -1,15 +1,33 @@
 # ScanITD
 
 [![PyPI version](https://img.shields.io/pypi/v/scanitd.svg)](https://pypi.python.org/pypi/scanitd)
-[![PyPI - Wheel](https://img.shields.io/pypi/wheel/scanitd)](https://pypi.org/project/scanitd/#files)
+[![Conda Version](https://img.shields.io/conda/vn/bioconda/scanitd.svg)](https://anaconda.org/bioconda/scanitd)
+[![PyPI - Wheel](https://img.shields.io/pypi/wheel/scanitd)](https://pypi.python.org/pypi/scanitd/#files)
 [![license](https://img.shields.io/pypi/l/scanitd.svg)](https://github.com/ylab-hi/ScanITD/blob/main/LICENSE)
 [![Documentation Status](https://readthedocs.org/projects/scanitd/badge/?version=latest)](https://scanitd.readthedocs.io)
 
 
 # 📦 Installation
 
-ScanITD can be installed using pip, the Python package installer.
-Follow these steps to install:
+ScanITD can be installed using **Conda** (via the Bioconda channel) or **pip**.
+
+### Via Conda (Bioconda)
+
+To install ScanITD using Conda:
+
+```bash
+conda install -c bioconda scanitd
+```
+
+Or using the modern `bioconda::scanitd` specifier:
+
+```bash
+conda install bioconda::scanitd
+```
+
+### Via Pip
+
+ScanITD can also be installed using pip, the Python package installer:
 
 1. Ensure you have Python 3.10 or later installed on your system.
 
@@ -26,11 +44,13 @@ Follow these steps to install:
    pip install scanitd
    ```
 
-4. Verify the installation:
+### Verification
 
-   ```bash
-   scanitd --help
-   ```
+Verify the installation:
+
+```bash
+scanitd --help
+```
 
 # 🛠️ Usage
 
