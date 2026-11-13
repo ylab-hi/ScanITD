@@ -82,11 +82,21 @@ class TestParseTargetGenomicCoordinates:
 
     def test_tab_separated_bed_inline(self):
         result = parse_target_genomic_coordinates("chr1\t100\t200")
-        assert result == ["chr1:100-200"]
+        assert result == ["chr1:101-200"]
+
+    def test_tab_separated_bed_inline_start_zero(self):
+        result = parse_target_genomic_coordinates("chr1\t0\t200")
+        assert result == ["chr1:1-200"]
+
+    def test_tab_separated_bed_single_base_start_zero(self):
+        result = parse_target_genomic_coordinates("chr1\t0\t1")
+        assert result == ["chr1:1-1"]
 
     def test_invalid_coordinates_raises(self):
         with pytest.raises(ValueError):
             parse_target_genomic_coordinates("chr1:200-100")  # start > end
+        with pytest.raises(ValueError):
+            parse_target_genomic_coordinates("chr1:0-100")  # 1-based region start cannot be 0
 
     # Bug #15 regression -------------------------------------------------------
     def test_bare_chrom_name_accepted(self):
@@ -98,15 +108,21 @@ class TestParseTargetGenomicCoordinates:
         bed = tmp_path / "targets.bed"
         bed.write_text("chr1\t100\t200\nchr2\t300\t400\n")
         result = parse_target_genomic_coordinates(str(bed))
-        assert "chr1:100-200" in result
-        assert "chr2:300-400" in result
+        assert "chr1:101-200" in result
+        assert "chr2:301-400" in result
+
+    def test_bed_file_start_zero(self, tmp_path):
+        bed = tmp_path / "targets_zero.bed"
+        bed.write_text("chr1\t0\t200\n")
+        result = parse_target_genomic_coordinates(str(bed))
+        assert result == ["chr1:1-200"]
 
     def test_bed_file_ignores_comments(self, tmp_path):
         bed = tmp_path / "targets.bed"
         bed.write_text("# comment\nchr1\t50\t150\n")
         result = parse_target_genomic_coordinates(str(bed))
         assert len(result) == 1
-        assert result[0] == "chr1:50-150"
+        assert result[0] == "chr1:51-150"
 
 
 # ---------------------------------------------------------------------------

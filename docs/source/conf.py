@@ -13,7 +13,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
 project = "ScanITD"
 copyright = "2024, Ting-You Wang"
 author = "Ting-You Wang"
-release = "0.9.1"
+release = "0.9.3"
 version = "0.9"
 
 # -- General configuration ---------------------------------------------------

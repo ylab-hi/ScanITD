@@ -7,6 +7,23 @@ and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.
 
 ---
 
+## [0.9.3] — 2026-11-13
+
+### Fixed
+- Removed the 8,000x `pysam.pileup()` depth cap that caused AF underestimation on deep amplicon data (now uncapped by default via `2**31 - 1`, configurable with `--max-depth`)
+- Converted 0-based BED start coordinates (`start + 1`) to 1-based samtools region strings in `parse_target_genomic_coordinates()`, preventing `ValueError: start out of range (-1)` when a BED interval starts at `0`
+
+### Changed
+- Vendored the MIT-licensed Striped Smith-Waterman (SSW) C library and `ctypes` Python wrapper under `src/scanitd/ssw`, removing the external `ssw-py` dependency
+- Added a Hatchling custom build hook (`src/scanitd/ssw/build_ssw.py`) to compile `ssw.so` from source during wheel builds (with `sse2neon.h` support for ARM64)
+- Updated `conda/meta.yaml` for native C extension builds (`{{ compiler('c') }}`, `make`) and removed `ssw-py`
+
+### Added
+- Unit tests for `scanitd.ssw.AlignmentMgr` and `Alignment` (`tests/test_ssw.py`)
+- Unit and end-to-end split-read rescue tests for `scanitd.inference.sr_resuer` (`tests/test_sr_resuer.py`)
+
+---
+
 ## [0.9.2] — 2026-07-16
 
 ### Fixed

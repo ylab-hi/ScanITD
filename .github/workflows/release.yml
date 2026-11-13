@@ -6,8 +6,8 @@ on:
       - "v*"
 
 jobs:
-  build:
-    name: Build distribution
+  test:
+    name: Run test suite
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -21,18 +21,49 @@ jobs:
       - name: Run tests
         run: uv run pytest
 
-      - name: Build sdist and wheel
-        run: uv build
+  build_sdist:
+    name: Build source distribution
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
 
-      - name: Upload distribution artifacts
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+
+      - name: Build sdist
+        run: uv build --sdist
+
+      - name: Upload sdist artifact
         uses: actions/upload-artifact@v4
         with:
-          name: python-package-distributions
+          name: pypi-sdist
+          path: dist/
+
+  build_wheels:
+    name: Build wheels (${{ matrix.os }})
+    needs: test
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build wheels with cibuildwheel
+        uses: pypa/cibuildwheel@v4.3.5
+        with:
+          output-dir: dist
+
+      - name: Upload wheel artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: pypi-wheels-${{ matrix.os }}
           path: dist/
 
   publish:
     name: Publish to PyPI
-    needs: build
+    needs: [build_sdist, build_wheels]
     runs-on: ubuntu-latest
     environment:
       name: pypi
@@ -40,11 +71,18 @@ jobs:
     permissions:
       id-token: write
     steps:
-      - name: Download distribution artifacts
+      - name: Download sdist artifact
         uses: actions/download-artifact@v4
         with:
-          name: python-package-distributions
+          name: pypi-sdist
           path: dist/
+
+      - name: Download wheel artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: pypi-wheels-*
+          path: dist/
+          merge-multiple: true
 
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1

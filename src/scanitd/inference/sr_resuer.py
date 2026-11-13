@@ -1,6 +1,6 @@
 """Split-read rescue functions for augmenting tandem duplication allele observations.
 
-Uses Smith-Waterman local alignment (ssw-py) to rescue soft-clipped reads
+Uses vendored Smith-Waterman local alignment (scanitd.ssw) to rescue soft-clipped reads
 that support a TDUP event but lack an SA tag, improving allele frequency estimates.
 """
 
@@ -8,12 +8,13 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from ssw import AlignmentMgr
-
 from scanitd.base import MappingMode
+from scanitd.ssw import AlignmentMgr
 
 if TYPE_CHECKING:
     from pyfaidx import Fasta
+
+    from scanitd.base import MicroRegion
 
 __all__ = [
     "update_tdup_ao",
@@ -21,7 +22,7 @@ __all__ = [
 
 
 def update_tdup_ao(
-    tdup_id: tuple[str, int, int, str],
+    tdup_id: tuple[str, int, int, str, MicroRegion],
     original_ao: int,
     genome_fasta: Fasta,
     to_be_rescued_sequences: dict,

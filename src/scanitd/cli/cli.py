@@ -19,6 +19,14 @@ def itd_len_type(value: int) -> int:
     return int(value)
 
 
+def max_depth_type(value: int) -> int:
+    """Validate that max pileup depth is non-negative."""
+    if int(value) < 0:
+        msg = "max-depth must be non-negative (0 for unlimited)"
+        raise typer.BadParameter(msg)
+    return int(value)
+
+
 def version_callback(value: bool):
     """Print the ScanITD version string and exit.
 
@@ -119,6 +127,12 @@ def main(
         "--target",
         help="Limit analysis to targets listed in the BED-format file or a samtools region string",
     ),
+    max_depth: int = typer.Option(
+        0,
+        "--max-depth",
+        callback=max_depth_type,
+        help="Maximum pileup read depth per position (0 for unlimited)",
+    ),
     log_level: LogLevel = typer.Option(LogLevel.INFO, "-l", "--log-level", help="set the logging level."),
     version: bool | None = typer.Option(
         None,
@@ -143,6 +157,7 @@ def main(
         mismatch_sr: Maximum mismatches for soft-read rescue alignment (default: 1).
         mismatch_insertion: Maximum mismatches for insertion-inferred duplication (default: 2).
         target: BED file path or samtools region string to restrict analysis.
+        max_depth: Maximum pileup read depth per position; 0 means unlimited (default: 0).
         log_level: Logging verbosity level (default: INFO).
         version: When provided, prints version and exits.
     """
@@ -165,6 +180,7 @@ def main(
         allowed_mismatches_for_sr_rescue=mismatch_sr,
         allowed_mismatches_for_insertion=mismatch_insertion,
         logger=logger,
+        max_depth=max_depth,
     )
 
     write_events_to_vcf(output, bam_header, event_list, logger, min_ao=ao, min_depth=dp, min_vaf=vaf)

@@ -3,8 +3,9 @@ __pycache__/
 *.py[cod]
 *$py.class
 
-# C extensions
+# C extensions and object files
 *.so
+*.o
 
 # Distribution / packaging
 .Python
@@ -117,4 +118,5 @@ ENV/
 .omc/
 .serena/
 BIOCONDA.md
+CLAUDE.md
 

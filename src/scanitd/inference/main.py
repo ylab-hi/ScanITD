@@ -227,6 +227,9 @@ class BamScanner:
         return self.tdup_anchors
 
 
+_PYSAM_UNLIMITED_DEPTH = 2**31 - 1
+
+
 def scan_itd(
     in_bam_path,
     mapq_cutoff,
@@ -237,6 +240,7 @@ def scan_itd(
     allowed_mismatches_for_insertion,
     logger,
     microinsertion_cutoff: int = 10,
+    max_depth: int = 0,
 ):
     """Run the full ScanITD detection pipeline on a BAM file.
 
@@ -258,12 +262,19 @@ def scan_itd(
         logger: Logger instance implementing LoggerType.
         microinsertion_cutoff: Maximum microinsertion length at a breakpoint
             (default: 10).
+        max_depth: Maximum pileup read depth per position; 0 means unlimited
+            (default: 0).
 
     Returns:
         tuple: A 2-tuple of (sorted_event_list, bam_header) where sorted_event_list
             is a list of :class:`~scanitd.base.Event` objects sorted by (chrom, ref_start)
             and bam_header is the raw BAM header dict.
     """
+    if max_depth < 0:
+        msg = f"max_depth must be non-negative, got {max_depth}"
+        raise ValueError(msg)
+    effective_max_depth = _PYSAM_UNLIMITED_DEPTH if max_depth == 0 else max_depth
+
     regions = parse_target_genomic_coordinates(target_file)
 
     if len(regions) == 0:
@@ -297,7 +308,7 @@ def scan_itd(
 
     for _region in regions:
         try:
-            for pileup_column in bam_object.pileup(region=_region, stepper="all", truncate=True):
+            for pileup_column in bam_object.pileup(region=_region, stepper="all", truncate=True, max_depth=effective_max_depth):
                 # a list of pysam.PileupRead
                 for pileup_read in pileup_column.pileups:
                     position_of_pileup_site = pileup_read.query_position

@@ -352,11 +352,16 @@ def parse_target_genomic_coordinates(input_data):
         return result
 
     # Helper function to validate and convert coordinates
-    def validate_coordinates(chrom, start, end):
+    def validate_coordinates(chrom, start, end, *, is_bed: bool = False):
         try:
             start = int(start)
             end = int(end)
-            if start < 0 or end < 0 or start >= end:
+            if is_bed:
+                # BED is 0-based half-open [start, end); convert to 1-based inclusive chrom:start-end
+                if start < 0 or end < 0 or start >= end:
+                    raise ValueError
+                return f"{chrom}:{start + 1}-{end}"
+            if start < 1 or end < 1 or start > end:
                 raise ValueError
             return f"{chrom}:{start}-{end}"
         except ValueError:
@@ -374,7 +379,7 @@ def parse_target_genomic_coordinates(input_data):
                 if line.strip() and not line.startswith("#"):
                     fields = line.strip().split("\t")
                     if len(fields) >= 3:
-                        result.append(validate_coordinates(fields[0], fields[1], fields[2]))
+                        result.append(validate_coordinates(fields[0], fields[1], fields[2], is_bed=True))
                     else:
                         msg = f"Invalid BED format in line: {line}"
                         raise ValueError(msg)
@@ -396,7 +401,7 @@ def parse_target_genomic_coordinates(input_data):
             try:
                 chrom, pos = entry.split(":")
                 start, end = pos.split("-")
-                result.append(validate_coordinates(chrom, start, end))
+                result.append(validate_coordinates(chrom, start, end, is_bed=False))
             except ValueError:
                 msg = f"Invalid chrom:start-end format: {entry}"
                 raise ValueError(msg)
@@ -405,7 +410,7 @@ def parse_target_genomic_coordinates(input_data):
         elif "\t" in entry:
             fields = entry.split("\t")
             if len(fields) >= 3:
-                result.append(validate_coordinates(fields[0], fields[1], fields[2]))
+                result.append(validate_coordinates(fields[0], fields[1], fields[2], is_bed=True))
             else:
                 msg = f"Invalid BED format: {entry}"
                 raise ValueError(msg)

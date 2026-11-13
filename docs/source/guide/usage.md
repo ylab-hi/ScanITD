@@ -32,6 +32,7 @@ file and writes results in VCF 4.3 format.
 | `--depth` | `-d` | `10` | Minimum read depth at the locus |
 | `--vaf` | `-f` | `0.1` | Minimum variant allele frequency (0–1) |
 | `--length` | | `10` | Minimum ITD length in base pairs |
+| `--max-depth` | | `0` | Maximum pileup read depth per position (`0` for unlimited) |
 
 ### Alignment sensitivity
 
@@ -78,7 +79,7 @@ insertions (INS).
 ### 3. Soft-clipped read rescue
 
 Soft-clipped reads that lack an SA tag are aligned against the expected
-duplicated reference sequence using Smith-Waterman alignment (ssw-py). Those
+duplicated reference sequence using the vendored Smith-Waterman library (`scanitd.ssw`). Those
 whose alignment is end-anchored and passes the mismatch threshold are counted
 as additional supporting reads, improving VAF estimates.
 
