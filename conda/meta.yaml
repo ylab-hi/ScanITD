@@ -22,11 +22,11 @@ requirements:
     - {{ compiler('c') }}
     - make
   host:
-    - python >=3.9
+    - python
     - pip
     - hatchling
   run:
-    - python >=3.9
+    - python
     - numpy >=2.0.0
     - pysam >=0.22.0
     - pyfaidx >=0.7.2
@@ -36,8 +36,12 @@ requirements:
     - rich >=13.7.0
 
 test:
+  imports:
+    - scanitd
+    - scanitd.ssw
   commands:
     - scanitd --help
+    - python -c "from scanitd.ssw import AlignmentMgr; m = AlignmentMgr(); m.set_read('ACGT'); m.set_reference('TTACGTTT'); r = m.align(); assert r.CIGAR == '4M' and r.reference_start == 2"
 
 about:
   home: https://github.com/ylab-hi/ScanITD
